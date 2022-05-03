@@ -1,5 +1,5 @@
 defmodule Polyn.CloudEvent.V_1_0_1 do
-  def schema do
+  def json_schema do
     %{
       "%id" => "https://raw.githubusercontent.com/cloudevents/spec/v1.0.1/spec.json",
       "$schema" => "http://json-schema.org/draft-07/schema#",
