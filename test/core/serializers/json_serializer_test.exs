@@ -13,10 +13,12 @@ defmodule Polyn.Serializers.JSONTest do
   describe "serialize/1" do
     test "turns non-data event into JSON" do
       now = NaiveDateTime.utc_now() |> NaiveDateTime.to_iso8601()
+      langversion = System.build_info().version
+      version = Polyn.MixProject.version()
 
       json =
         Event.new(
-          spec_version: "1.0.1",
+          specversion: "1.0.1",
           type: "user.created.v1",
           source: "test",
           time: now
@@ -28,14 +30,14 @@ defmodule Polyn.Serializers.JSONTest do
                "specversion" => "1.0.1",
                "type" => "user.created.v1",
                "source" => "test",
-               "time" => now,
+               "time" => ^now,
                "polyntrace" => [],
                "polynclient" => %{
                  "lang" => "elixir",
-                 "langversion" => System.build_info().version,
-                 "version" => Polyn.MixProject.version()
+                 "langversion" => ^langversion,
+                 "version" => ^version
                }
-             } == Map.delete(json, "id")
+             } = json
 
       assert UUID.info!(json["id"]) |> Keyword.get(:version) == 4
     end
@@ -43,7 +45,7 @@ defmodule Polyn.Serializers.JSONTest do
     test "turns data event into JSON" do
       json =
         Event.new(
-          spec_version: "1.0.1",
+          specversion: "1.0.1",
           type: "user.created.v1",
           source: "test",
           data: %{foo: "bar"},
@@ -59,26 +61,20 @@ defmodule Polyn.Serializers.JSONTest do
     test "error if data without dataschema" do
       event =
         Event.new(
-          spec_version: "1.0.1",
+          specversion: "1.0.1",
           type: "user.created.v1",
           source: "test",
           data: %{foo: "bar"}
         )
 
-      assert_raise(
-        Polyn.ValidationException,
-        "Polyn event #{event.id} included data without a dataschema. Any data sent through Polyn events must have an associated dataschema. []",
-        fn ->
-          JSON.serialize(event)
-        end
-      )
+      assert_raise(Polyn.ValidationException, fn -> JSON.serialize(event) end)
     end
 
     test "error if missing id" do
       assert_raise(Polyn.ValidationException, fn ->
         Event.new(
           id: nil,
-          spec_version: "1.0.1",
+          specversion: "1.0.1",
           type: "user.created.v1",
           source: "test"
         )

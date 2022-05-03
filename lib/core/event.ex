@@ -1,13 +1,18 @@
 defmodule Polyn.Event do
+  @moduledoc """
+  The Event structure used throughout Polyn.
+
+
+  """
   defstruct id: nil,
-            spec_version: nil,
+            specversion: nil,
             type: nil,
             data: nil,
             dataschema: nil,
             source: nil,
             time: nil,
-            trace: [],
-            client: %{
+            polyntrace: [],
+            polynclient: %{
               lang: "elixir",
               langversion: System.build_info().version,
               version: Polyn.MixProject.version()
