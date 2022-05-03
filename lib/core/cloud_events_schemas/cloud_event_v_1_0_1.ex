@@ -1,4 +1,7 @@
 defmodule Polyn.CloudEvent.V_1_0_1 do
+  @behaviour Polyn.CloudEvent
+
+  @impl true
   def json_schema do
     %{
       "%id" => "https://raw.githubusercontent.com/cloudevents/spec/v1.0.1/spec.json",
@@ -97,5 +100,6 @@ defmodule Polyn.CloudEvent.V_1_0_1 do
     }
   end
 
+  @impl true
   def version(), do: "1.0.1"
 end
