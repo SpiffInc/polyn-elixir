@@ -16,7 +16,7 @@ defmodule Polyn.Event do
   def new(fields) when is_list(fields) do
     fields =
       Keyword.put_new(fields, :id, UUID.uuid4())
-      |> Keyword.put_new(:time, DateTime.utc_now())
+      |> Keyword.put_new(:time, DateTime.to_iso8601(DateTime.utc_now()))
 
     struct!(__MODULE__, fields)
   end

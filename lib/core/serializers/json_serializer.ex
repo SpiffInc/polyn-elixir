@@ -38,9 +38,20 @@ defmodule Polyn.Serializers.JSON do
   end
 
   defp validate(json) do
+    schema =
+      Polyn.CloudEvent.json_schema_for_version(json["specversion"])
+      |> ExJsonSchema.Schema.resolve()
+
+    case ExJsonSchema.Validator.validate(schema, json) do
+      :ok -> {:ok, json}
+      {:error, message} -> raise Polyn.ValidationException, inspect(message)
+    end
+
     if Map.has_key?(json, "data") and !json["dataschema"] do
       raise Polyn.ValidationException,
-            "Polyn event #{json["id"]} included data without a dataschema. Any data sent through Polyn events must have an associated dataschema."
+            "Polyn event #{json["id"]} included data without a dataschema. Any data sent through Polyn events must have an associated dataschema. #{inspect(json["polyntrace"])}"
+    else
+      json
     end
   end
 end
