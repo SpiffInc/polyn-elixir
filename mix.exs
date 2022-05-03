@@ -1,10 +1,12 @@
 defmodule Polyn.MixProject do
   use Mix.Project
 
+  def version, do: "0.1.0"
+
   def project do
     [
       app: :polyn,
-      version: "0.1.0",
+      version: version(),
       elixir: "~> 1.12",
       start_permanent: Mix.env() == :prod,
       deps: deps()
@@ -22,7 +24,8 @@ defmodule Polyn.MixProject do
   defp deps do
     [
       {:ex_json_schema, "~> 0.9.1"},
-      {:jason, "~> 1.2"}
+      {:jason, "~> 1.2"},
+      {:uuid, "~> 1.1"}
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
