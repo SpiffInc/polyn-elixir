@@ -81,5 +81,16 @@ defmodule Polyn.Serializers.JSONTest do
         |> JSON.serialize()
       end)
     end
+
+    test "error if unknown specversion" do
+      assert_raise(Polyn.ValidationException, fn ->
+        Event.new(
+          specversion: "foo",
+          type: "user.created.v1",
+          source: "test"
+        )
+        |> JSON.serialize()
+      end)
+    end
   end
 end

@@ -12,9 +12,12 @@ defmodule Polyn.CloudEvent do
     apply(module_for_version(version), :json_schema, [])
   end
 
-  defp module_for_version(version) when is_binary(version) do
+  @doc """
+  Find the module that corresponds to a CloudEvent version
+  """
+  def module_for_version(version) when is_binary(version) do
     suffix = "V_" <> String.replace(version, ".", "_")
 
-    String.to_atom("Elixir.Polyn.CloudEvent.#{suffix}")
+    String.to_existing_atom("Elixir.Polyn.CloudEvent.#{suffix}")
   end
 end

@@ -1,15 +1,23 @@
 defmodule Polyn.Serializers.JSON do
-  @spec deserialize(json :: binary()) :: {:ok, any} | {:error, any()}
-  def deserialize(json) do
-    data = Jason.decode!(json)
-    schema = ExJsonSchema.Schema.resolve(Polyn.CloudEvent.V_1_0_1.json_schema())
+  @moduledoc """
+  JSON Serializer for Polyn events. Functions will raise if
+  inconsistencies are found
+  """
 
-    case ExJsonSchema.Validator.validate(schema, data) do
-      :ok -> {:ok, data}
-      error -> error
-    end
-  end
+  # @doc """
+  # Convert a JSON payload into a Polyn.Event struct
+  # Raises an error if json is not valid
+  # """
+  # @spec deserialize(json :: binary()) :: Polyn.Event.t()
+  # def deserialize(json) do
+  #   data = Jason.decode!(json) |> validate()
+  # end
 
+  @doc """
+  Convert a Polyn.Event struct into a JSON paylod.
+  Raises an error if event is not valid
+  """
+  @spec serialize(event :: Polyn.Event.t()) :: String.t()
   def serialize(event) do
     Map.from_struct(event)
     |> Enum.reduce(%{}, fn field, acc ->
@@ -26,7 +34,7 @@ defmodule Polyn.Serializers.JSON do
   defp validate(json) do
     errors =
       validate_dataschema_presence([], json)
-      |> validate_json_schema(json)
+      |> validate_event_schema(json)
 
     if Enum.empty?(errors) do
       json
@@ -49,11 +57,26 @@ defmodule Polyn.Serializers.JSON do
 
   defp validate_dataschema_presence(errors, _event), do: errors
 
-  defp validate_json_schema(errors, json) do
-    schema =
-      Polyn.CloudEvent.json_schema_for_version(json["specversion"])
-      |> ExJsonSchema.Schema.resolve()
+  defp validate_event_schema(errors, json) do
+    schema = get_cloud_event_schema(json["specversion"])
+    validate_schema(errors, schema, json)
+  end
 
+  defp get_cloud_event_schema(version) do
+    try do
+      Polyn.CloudEvent.json_schema_for_version(version)
+      |> ExJsonSchema.Schema.resolve()
+    rescue
+      _error ->
+        nil
+    end
+  end
+
+  defp validate_schema(errors, nil, json) do
+    add_error(errors, "Polyn does not recognize specversion #{json["specversion"]}")
+  end
+
+  defp validate_schema(errors, schema, json) do
     case ExJsonSchema.Validator.validate(schema, json) do
       :ok ->
         errors
