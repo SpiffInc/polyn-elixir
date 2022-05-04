@@ -32,18 +32,9 @@ defmodule Polyn.Serializers.JSON do
   end
 
   defp validate(json) do
-    errors =
-      validate_dataschema_presence([], json)
-      |> validate_event_schema(json)
-
-    if Enum.empty?(errors) do
-      json
-    else
-      errors = add_error(errors, "Polyn event #{json["id"]} is not valid")
-      errors = errors ++ ["Event data: #{inspect(json)}"]
-      errors = Enum.join(errors, "\n")
-      raise Polyn.ValidationException, errors
-    end
+    validate_dataschema_presence([], json)
+    |> validate_event_schema(json)
+    |> handle_errors(json)
   end
 
   defp validate_dataschema_presence(errors, %{"data" => nil}), do: errors
@@ -85,6 +76,15 @@ defmodule Polyn.Serializers.JSON do
         json_errors = Enum.map(json_errors, &elem(&1, 0))
         Enum.concat(errors, json_errors)
     end
+  end
+
+  defp handle_errors([], json), do: json
+
+  defp handle_errors(errors, json) do
+    errors = add_error(errors, "Polyn event #{json["id"]} is not valid")
+    errors = errors ++ ["Event data: #{inspect(json)}"]
+    errors = Enum.join(errors, "\n")
+    raise Polyn.ValidationException, errors
   end
 
   defp add_error(errors, error) do
