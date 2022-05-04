@@ -118,7 +118,10 @@ defmodule Polyn.Serializers.JSONTest do
                  "lang" => "elixir",
                  "langversion" => ^langversion,
                  "version" => ^version
-               }
+               },
+               "data" => nil,
+               "dataschema" => nil
+               "datacontenttype" => nil
              } = json
 
       assert UUID.info!(json["id"]) |> Keyword.get(:version) == 4
@@ -155,6 +158,23 @@ defmodule Polyn.Serializers.JSONTest do
 
       assert json["data"] == %{"foo" => "bar"}
       assert json["dataschema"] == "com:foo:user:created:v1:schema:v1"
+      assert json["datacontenttype"] == "application/json"
+    end
+
+    test "works with different datacontenttype than json" do
+      json =
+        Event.new(
+          specversion: "1.0.1",
+          type: "user.created.v1",
+          source: "test",
+          datacontenttype: "application/xml",
+          data: "<much wow=\"xml\"/>"
+        )
+        |> JSON.serialize()
+        |> Jason.decode!()
+
+      assert json["data"] == "<much wow=\"xml\"/>"
+      assert json["datacontenttype"] == "application/xml"
     end
 
     test "error if data without dataschema" do

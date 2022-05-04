@@ -33,7 +33,20 @@ specification and strictly enforces the event format. This means that you can us
 that can be used by other services, or natively interact with things such as GCP Cloud Functions.
 
 For events that include `data` Polyn also leverages the [JSON Schema](http://json-schema.org/)
-specification to create consistency
+specification to create consistency.
+
+## Event and Data Serialization
+
+Each Producer and Consumer can define what kind of serializer to use for the event. By default they
+will use `Polyn.Serializers.JSON`.
+
+### `datacontenttype`
+The [Cloud Event Spec](https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md#datacontenttype) allows for the possibility for the `data` in the event to differ in format than the event itself. For example you may have
+an event that is being serialized as JSON, but the data inside is XML. By default the serializer will assume any `data` is the same format as the event itself. If the `data` differs you must specify its format with the
+`datacontenttype` attribute.
+
+If the `datacontenttype` is not `application/json` the JSON Serializer will not decode it. It will be validated
+as much as possible through the `dataschema` though.
 
 ## Installation
 

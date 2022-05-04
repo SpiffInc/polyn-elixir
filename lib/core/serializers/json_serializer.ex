@@ -37,12 +37,19 @@ defmodule Polyn.Serializers.JSON do
     |> Enum.reduce(%{}, fn field, acc ->
       serialize_field(acc, field)
     end)
+    |> add_datacontenttype()
     |> validate()
     |> Jason.encode!()
   end
 
   defp serialize_field(data, {key, value}) do
     Map.put(data, Atom.to_string(key), value)
+  end
+
+  defp add_datacontenttype(%{"data" => nil} = json), do: json
+
+  defp add_datacontenttype(%{"datacontenttype" => nil} = json) do
+    Map.put(json, "datacontenttype", "application/json")
   end
 
   defp validate(json) do

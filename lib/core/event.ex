@@ -7,6 +7,7 @@ defmodule Polyn.Event do
             type: nil,
             data: nil,
             dataschema: nil,
+            datacontenttype: nil,
             source: nil,
             time: nil,
             polyntrace: [],
