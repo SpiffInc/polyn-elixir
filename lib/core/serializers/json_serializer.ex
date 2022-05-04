@@ -34,6 +34,7 @@ defmodule Polyn.Serializers.JSON do
   defp validate(json) do
     validate_dataschema_presence([], json)
     |> validate_event_schema(json)
+    |> validate_dataschema(json)
     |> handle_errors(json)
   end
 
@@ -49,32 +50,55 @@ defmodule Polyn.Serializers.JSON do
   defp validate_dataschema_presence(errors, _event), do: errors
 
   defp validate_event_schema(errors, json) do
-    schema = get_cloud_event_schema(json["specversion"])
-    validate_schema(errors, schema, json)
+    case get_cloud_event_schema(json["specversion"]) do
+      nil -> add_error(errors, "Polyn does not recognize specversion #{json["specversion"]}")
+      schema -> validate_schema(errors, schema, json)
+    end
   end
 
   defp get_cloud_event_schema(version) do
     try do
       Polyn.CloudEvent.json_schema_for_version(version)
-      |> ExJsonSchema.Schema.resolve()
     rescue
       _error ->
         nil
     end
   end
 
-  defp validate_schema(errors, nil, json) do
-    add_error(errors, "Polyn does not recognize specversion #{json["specversion"]}")
+  defp validate_dataschema(errors, %{"dataschema" => nil}), do: errors
+
+  defp validate_dataschema(errors, json) do
+    case get_dataschema(json["type"], json["dataschema"]) do
+      {:ok, schema} ->
+        validate_schema(errors, Jason.decode!(schema), json["data"])
+
+      {:error, _reason} ->
+        add_error(errors, "Polyn could not find dataschema #{json["dataschema"]}")
+    end
+  end
+
+  defp get_dataschema(event_type, dataschema) do
+    dataschema = String.replace(dataschema, ":", ".") <> ".json"
+
+    file().read(Path.join(dataschema_dir(), "#{event_type}/#{dataschema}"))
+  end
+
+  defp dataschema_dir do
+    Path.join(file().cwd!(), "/priv/polyn/schemas")
   end
 
   defp validate_schema(errors, schema, json) do
+    schema = ExJsonSchema.Schema.resolve(schema)
+
     case ExJsonSchema.Validator.validate(schema, json) do
       :ok ->
         errors
 
       {:error, json_errors} ->
-        json_errors = Enum.map(json_errors, &elem(&1, 0))
-        Enum.concat(errors, json_errors)
+        Enum.map(json_errors, fn {message, property_path} ->
+          "Property: `#{property_path}` - #{message}"
+        end)
+        |> Enum.concat(errors)
     end
   end
 
@@ -89,5 +113,9 @@ defmodule Polyn.Serializers.JSON do
 
   defp add_error(errors, error) do
     [error | errors]
+  end
+
+  defp file do
+    Application.get_env(:polyn, :file, File)
   end
 end
