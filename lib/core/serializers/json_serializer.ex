@@ -46,34 +46,17 @@ defmodule Polyn.Serializers.JSON do
     Map.put(data, Atom.to_string(key), value)
   end
 
-  defp add_datacontenttype(%{"data" => nil} = json), do: json
-
   defp add_datacontenttype(%{"datacontenttype" => nil} = json) do
     Map.put(json, "datacontenttype", "application/json")
   end
 
+  defp add_datacontenttype(json), do: json
+
   defp validate(json) do
-    validate_dataschema_presence([], json)
-    |> validate_event_schema(json)
+    validate_event_schema([], json)
     |> validate_dataschema(json)
     |> handle_errors(json)
   end
-
-  defp validate_dataschema_presence(errors, %{"data" => nil}), do: errors
-
-  defp validate_dataschema_presence(errors, %{"data" => _data} = json)
-       when is_map_key(json, "dataschema") == false do
-    validate_dataschema_presence(errors, Map.put(json, "dataschema", nil))
-  end
-
-  defp validate_dataschema_presence(errors, %{"data" => _data, "dataschema" => nil}) do
-    add_error(
-      errors,
-      "Included data without a dataschema. Any data sent through Polyn events must have an associated dataschema."
-    )
-  end
-
-  defp validate_dataschema_presence(errors, _event), do: errors
 
   defp validate_event_schema(errors, json) do
     case get_cloud_event_schema(json["specversion"]) do
@@ -91,8 +74,13 @@ defmodule Polyn.Serializers.JSON do
     end
   end
 
-  defp validate_dataschema(errors, json) when is_map_key(json, "dataschema") == false, do: errors
-  defp validate_dataschema(errors, %{"dataschema" => nil}), do: errors
+  defp validate_dataschema(errors, json) when is_map_key(json, "dataschema") == false do
+    validate_dataschema(errors, Map.put(json, "dataschema", nil))
+  end
+
+  defp validate_dataschema(errors, %{"dataschema" => nil}) do
+    add_error(errors, "Missing dataschema. Every Polyn event must have a dataschema")
+  end
 
   defp validate_dataschema(errors, json) do
     case get_dataschema(json["type"], json["dataschema"]) do
