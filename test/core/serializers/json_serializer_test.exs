@@ -76,6 +76,20 @@ defmodule Polyn.Serializers.JSONTest do
                dataschema: "com:foo:user:created:v1:schema:v1"
              } = event
     end
+
+    test "error if data without dataschema" do
+      json =
+        %{
+          id: "foo",
+          specversion: "1.0.1",
+          type: "user.created.v1",
+          source: "test",
+          data: %{foo: "bar"}
+        }
+        |> Jason.encode!()
+
+      assert_raise(Polyn.ValidationException, fn -> JSON.deserialize(json) end)
+    end
   end
 
   describe "serialize/1" do

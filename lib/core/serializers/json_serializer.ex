@@ -54,6 +54,11 @@ defmodule Polyn.Serializers.JSON do
 
   defp validate_dataschema_presence(errors, %{"data" => nil}), do: errors
 
+  defp validate_dataschema_presence(errors, %{"data" => _data} = json)
+       when is_map_key(json, "dataschema") == false do
+    validate_dataschema_presence(errors, Map.put(json, "dataschema", nil))
+  end
+
   defp validate_dataschema_presence(errors, %{"data" => _data, "dataschema" => nil}) do
     add_error(
       errors,
