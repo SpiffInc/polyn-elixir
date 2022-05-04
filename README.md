@@ -45,9 +45,6 @@ The [Cloud Event Spec](https://github.com/cloudevents/spec/blob/v1.0.2/cloudeven
 an event that is being serialized as JSON, but the data inside is XML. By default the serializer will assume any `data` is the same format as the event itself. If the `data` differs you must specify its format with the
 `datacontenttype` attribute.
 
-If the `datacontenttype` is not `application/json` the JSON Serializer will not decode it. It will be validated
-as much as possible through the `dataschema` though.
-
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
