@@ -66,12 +66,10 @@ defmodule Polyn.Serializers.JSON do
   end
 
   defp get_cloud_event_schema(version) do
-    try do
-      Polyn.CloudEvent.json_schema_for_version(version)
-    rescue
-      _error ->
-        nil
-    end
+    Polyn.CloudEvent.json_schema_for_version(version)
+  rescue
+    _error ->
+      nil
   end
 
   defp validate_dataschema(errors, json) when is_map_key(json, "dataschema") == false do

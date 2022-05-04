@@ -9,7 +9,7 @@ defmodule Polyn.CloudEvent do
   Get the JSON schema from a version number (e.g "1.0.1")
   """
   def json_schema_for_version(version) when is_binary(version) do
-    apply(module_for_version(version), :json_schema, [])
+    module_for_version(version).json_schema()
   end
 
   @doc """

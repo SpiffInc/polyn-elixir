@@ -2,8 +2,8 @@ defmodule Polyn.Serializers.JSONTest do
   use ExUnit.Case, async: true
 
   alias Polyn.Event
-  alias Polyn.Serializers.JSON
   alias Polyn.FileMock
+  alias Polyn.Serializers.JSON
 
   import Mox
 

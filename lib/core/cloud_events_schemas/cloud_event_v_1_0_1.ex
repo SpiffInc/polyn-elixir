@@ -1,4 +1,6 @@
+# credo:disable-for-next-line
 defmodule Polyn.CloudEvent.V_1_0_1 do
+  @moduledoc false
   @behaviour Polyn.CloudEvent
 
   @impl true
@@ -101,5 +103,5 @@ defmodule Polyn.CloudEvent.V_1_0_1 do
   end
 
   @impl true
-  def version(), do: "1.0.1"
+  def version, do: "1.0.1"
 end

@@ -1,4 +1,5 @@
 defmodule Polyn.FileStub do
+  @moduledoc false
   @behaviour Polyn.FileBehaviour
 
   def mkdir!(_path) do
