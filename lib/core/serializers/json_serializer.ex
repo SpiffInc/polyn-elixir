@@ -4,14 +4,28 @@ defmodule Polyn.Serializers.JSON do
   inconsistencies are found
   """
 
-  # @doc """
-  # Convert a JSON payload into a Polyn.Event struct
-  # Raises an error if json is not valid
-  # """
-  # @spec deserialize(json :: binary()) :: Polyn.Event.t()
-  # def deserialize(json) do
-  #   data = Jason.decode!(json) |> validate()
-  # end
+  @doc """
+  Convert a JSON payload into a Polyn.Event struct
+  Raises an error if json is not valid
+  """
+  @spec deserialize(json :: binary()) :: Polyn.Event.t()
+  def deserialize(json) do
+    Jason.decode!(json) |> validate() |> to_event()
+  end
+
+  defp to_event(json) do
+    Map.keys(%Polyn.Event{})
+    |> Enum.reduce(Keyword.new(), fn event_key, acc ->
+      string_key = Atom.to_string(event_key)
+
+      if Map.has_key?(json, string_key) do
+        Keyword.put(acc, event_key, json[string_key])
+      else
+        acc
+      end
+    end)
+    |> Polyn.Event.new()
+  end
 
   @doc """
   Convert a Polyn.Event struct into a JSON paylod.
@@ -65,6 +79,7 @@ defmodule Polyn.Serializers.JSON do
     end
   end
 
+  defp validate_dataschema(errors, json) when is_map_key(json, "dataschema") == false, do: errors
   defp validate_dataschema(errors, %{"dataschema" => nil}), do: errors
 
   defp validate_dataschema(errors, json) do

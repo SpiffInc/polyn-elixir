@@ -10,9 +10,28 @@ defmodule Polyn.Serializers.JSONTest do
   setup :verify_on_exit!
 
   describe "deserialize/1" do
-    # test "validates" do
-    #   JSON.deserialize(%{})
-    # end
+    test "turns non-data json into eventt" do
+      now = NaiveDateTime.utc_now() |> NaiveDateTime.to_iso8601()
+
+      event =
+        %{
+          id: "foo",
+          specversion: "1.0.1",
+          type: "user.created.v1",
+          source: "test",
+          time: now
+        }
+        |> Jason.encode!()
+        |> JSON.deserialize()
+
+      assert %Event{
+               id: "foo",
+               specversion: "1.0.1",
+               type: "user.created.v1",
+               source: "test",
+               time: ^now
+             } = event
+    end
   end
 
   describe "serialize/1" do
