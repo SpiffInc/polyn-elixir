@@ -36,22 +36,15 @@ defmodule Polyn.Serializers.JSONTest do
     test "turns data json into event" do
       now = NaiveDateTime.utc_now() |> NaiveDateTime.to_iso8601()
 
-      expect(FileMock, :cwd!, fn -> "my_app" end)
+      expect_cwd!("my_app")
 
-      expect(
-        FileMock,
-        :read,
-        fn "my_app/priv/polyn/schemas/user.created.v1/com.foo.user.created.v1.schema.v1.json" ->
-          {:ok,
-           Jason.encode!(%{
-             "$schema" => "http://json-schema.org/draft-07/schema",
-             "$id" => "com:foo:user:created:v1:schema:v1",
-             "type" => "object",
-             "properties" => %{"foo" => %{"type" => "string"}},
-             "required" => ["foo"]
-           })}
-        end
-      )
+      expect_schema_read("my_app", "user.created.v1", "com.foo.user.created.v1.schema.v1.json", %{
+        "$schema" => "http://json-schema.org/draft-07/schema",
+        "$id" => "com:foo:user:created:v1:schema:v1",
+        "type" => "object",
+        "properties" => %{"foo" => %{"type" => "string"}},
+        "required" => ["foo"]
+      })
 
       event =
         %{
@@ -120,7 +113,7 @@ defmodule Polyn.Serializers.JSONTest do
                  "version" => ^version
                },
                "data" => nil,
-               "dataschema" => nil
+               "dataschema" => nil,
                "datacontenttype" => nil
              } = json
 
@@ -128,22 +121,15 @@ defmodule Polyn.Serializers.JSONTest do
     end
 
     test "turns data event into JSON" do
-      expect(FileMock, :cwd!, fn -> "my_app" end)
+      expect_cwd!("my_app")
 
-      expect(
-        FileMock,
-        :read,
-        fn "my_app/priv/polyn/schemas/user.created.v1/com.foo.user.created.v1.schema.v1.json" ->
-          {:ok,
-           Jason.encode!(%{
-             "$schema" => "http://json-schema.org/draft-07/schema",
-             "$id" => "com:foo:user:created:v1:schema:v1",
-             "type" => "object",
-             "properties" => %{"foo" => %{"type" => "string"}},
-             "required" => ["foo"]
-           })}
-        end
-      )
+      expect_schema_read("my_app", "user.created.v1", "com.foo.user.created.v1.schema.v1.json", %{
+        "$schema" => "http://json-schema.org/draft-07/schema",
+        "$id" => "com:foo:user:created:v1:schema:v1",
+        "type" => "object",
+        "properties" => %{"foo" => %{"type" => "string"}},
+        "required" => ["foo"]
+      })
 
       json =
         Event.new(
@@ -189,6 +175,18 @@ defmodule Polyn.Serializers.JSONTest do
       assert_raise(Polyn.ValidationException, fn -> JSON.serialize(event) end)
     end
 
+    test "error if no dataschema even without data" do
+      event =
+        Event.new(
+          specversion: "1.0.1",
+          type: "user.created.v1",
+          source: "test",
+          data: nil
+        )
+
+      assert_raise(Polyn.ValidationException, fn -> JSON.serialize(event) end)
+    end
+
     test "error if missing id" do
       assert_raise(Polyn.ValidationException, fn ->
         Event.new(
@@ -213,14 +211,13 @@ defmodule Polyn.Serializers.JSONTest do
     end
 
     test "error if dataschema doesn't exist" do
-      expect(FileMock, :cwd!, fn -> "my_app" end)
+      expect_cwd!("my_app")
 
-      expect(
-        FileMock,
-        :read,
-        fn "my_app/priv/polyn/schemas/user.created.v1/com.foo.user.created.v1.schema.v1.json" ->
-          {:error, "not found"}
-        end
+      expect_schema_read_error(
+        "my_app",
+        "user.created.v1",
+        "com.foo.user.created.v1.schema.v1.json",
+        "not found"
       )
 
       assert_raise(Polyn.ValidationException, fn ->
@@ -236,22 +233,15 @@ defmodule Polyn.Serializers.JSONTest do
     end
 
     test "error if data doesnt match dataschema" do
-      expect(FileMock, :cwd!, fn -> "my_app" end)
+      expect_cwd!("my_app")
 
-      expect(
-        FileMock,
-        :read,
-        fn "my_app/priv/polyn/schemas/user.created.v1/com.foo.user.created.v1.schema.v1.json" ->
-          {:ok,
-           Jason.encode!(%{
-             "$schema" => "http://json-schema.org/draft-07/schema",
-             "$id" => "com:foo:user:created:v1:schema:v1",
-             "type" => "object",
-             "properties" => %{"foo" => %{"type" => "string"}},
-             "required" => ["foo"]
-           })}
-        end
-      )
+      expect_schema_read("my_app", "user.created.v1", "com.foo.user.created.v1.schema.v1.json", %{
+        "$schema" => "http://json-schema.org/draft-07/schema",
+        "$id" => "com:foo:user:created:v1:schema:v1",
+        "type" => "object",
+        "properties" => %{"foo" => %{"type" => "string"}},
+        "required" => ["foo"]
+      })
 
       assert_raise(Polyn.ValidationException, fn ->
         Event.new(
@@ -264,5 +254,25 @@ defmodule Polyn.Serializers.JSONTest do
         |> JSON.serialize()
       end)
     end
+  end
+
+  defp expect_cwd!(cwd) do
+    expect(FileMock, :cwd!, fn -> cwd end)
+  end
+
+  defp expect_schema_read(cwd, event, schema_file, schema_data) do
+    path = "#{cwd}/priv/polyn/schemas/#{event}/#{schema_file}"
+
+    expect(FileMock, :read, fn ^path ->
+      {:ok, Jason.encode!(schema_data)}
+    end)
+  end
+
+  defp expect_schema_read_error(cwd, event, schema_file, message) do
+    path = "#{cwd}/priv/polyn/schemas/#{event}/#{schema_file}"
+
+    expect(FileMock, :read, fn ^path ->
+      {:error, message}
+    end)
   end
 end
