@@ -11,6 +11,14 @@ defmodule Polyn.Serializers.JSONTest do
 
   describe "deserialize/1" do
     test "turns non-data json into eventt" do
+      expect_cwd!("my_app")
+
+      expect_schema_read("my_app", "user.created.v1", "com.foo.user.created.v1.schema.v1.json", %{
+        "$schema" => "http://json-schema.org/draft-07/schema",
+        "$id" => "com:foo:user:created:v1:schema:v1",
+        "type" => "null"
+      })
+
       now = NaiveDateTime.utc_now() |> NaiveDateTime.to_iso8601()
 
       event =
@@ -19,7 +27,9 @@ defmodule Polyn.Serializers.JSONTest do
           specversion: "1.0.1",
           type: "user.created.v1",
           source: "test",
-          time: now
+          time: now,
+          data: nil,
+          dataschema: "com:foo:user:created:v1:schema:v1"
         }
         |> Jason.encode!()
         |> JSON.deserialize()
@@ -29,7 +39,9 @@ defmodule Polyn.Serializers.JSONTest do
                specversion: "1.0.1",
                type: "user.created.v1",
                source: "test",
-               time: ^now
+               time: ^now,
+               data: nil,
+               dataschema: "com:foo:user:created:v1:schema:v1"
              } = event
     end
 
@@ -87,6 +99,14 @@ defmodule Polyn.Serializers.JSONTest do
 
   describe "serialize/1" do
     test "turns non-data event into JSON" do
+      expect_cwd!("my_app")
+
+      expect_schema_read("my_app", "user.created.v1", "com.foo.user.created.v1.schema.v1.json", %{
+        "$schema" => "http://json-schema.org/draft-07/schema",
+        "$id" => "com:foo:user:created:v1:schema:v1",
+        "type" => "null"
+      })
+
       now = NaiveDateTime.utc_now() |> NaiveDateTime.to_iso8601()
       langversion = System.build_info().version
       version = Polyn.MixProject.version()
@@ -96,7 +116,8 @@ defmodule Polyn.Serializers.JSONTest do
           specversion: "1.0.1",
           type: "user.created.v1",
           source: "test",
-          time: now
+          time: now,
+          dataschema: "com:foo:user:created:v1:schema:v1"
         )
         |> JSON.serialize()
         |> Jason.decode!()
@@ -113,8 +134,8 @@ defmodule Polyn.Serializers.JSONTest do
                  "version" => ^version
                },
                "data" => nil,
-               "dataschema" => nil,
-               "datacontenttype" => nil
+               "dataschema" => "com:foo:user:created:v1:schema:v1",
+               "datacontenttype" => "application/json"
              } = json
 
       assert UUID.info!(json["id"]) |> Keyword.get(:version) == 4
@@ -148,11 +169,21 @@ defmodule Polyn.Serializers.JSONTest do
     end
 
     test "works with different datacontenttype than json" do
+      expect_cwd!("my_app")
+
+      expect_schema_read("my_app", "user.created.v1", "com.foo.user.created.v1.schema.v1.json", %{
+        "$schema" => "http://json-schema.org/draft-07/schema",
+        "$id" => "com:foo:user:created:v1:schema:v1",
+        "type" => "string",
+        "contentMediaType" => "application/xml"
+      })
+
       json =
         Event.new(
           specversion: "1.0.1",
           type: "user.created.v1",
           source: "test",
+          dataschema: "com:foo:user:created:v1:schema:v1",
           datacontenttype: "application/xml",
           data: "<much wow=\"xml\"/>"
         )
@@ -163,19 +194,7 @@ defmodule Polyn.Serializers.JSONTest do
       assert json["datacontenttype"] == "application/xml"
     end
 
-    test "error if data without dataschema" do
-      event =
-        Event.new(
-          specversion: "1.0.1",
-          type: "user.created.v1",
-          source: "test",
-          data: %{foo: "bar"}
-        )
-
-      assert_raise(Polyn.ValidationException, fn -> JSON.serialize(event) end)
-    end
-
-    test "error if no dataschema even without data" do
+    test "error if no dataschema, even without data" do
       event =
         Event.new(
           specversion: "1.0.1",
@@ -188,23 +207,43 @@ defmodule Polyn.Serializers.JSONTest do
     end
 
     test "error if missing id" do
+      expect_cwd!("my_app")
+
+      expect_schema_read("my_app", "user.created.v1", "com.foo.user.created.v1.schema.v1.json", %{
+        "$schema" => "http://json-schema.org/draft-07/schema",
+        "$id" => "com:foo:user:created:v1:schema:v1",
+        "type" => "string"
+      })
+
       assert_raise(Polyn.ValidationException, fn ->
         Event.new(
           id: nil,
           specversion: "1.0.1",
           type: "user.created.v1",
-          source: "test"
+          source: "test",
+          dataschema: "com:foo:user:created:v1:schema:v1",
+          data: "foo"
         )
         |> JSON.serialize()
       end)
     end
 
     test "error if unknown specversion" do
+      expect_cwd!("my_app")
+
+      expect_schema_read("my_app", "user.created.v1", "com.foo.user.created.v1.schema.v1.json", %{
+        "$schema" => "http://json-schema.org/draft-07/schema",
+        "$id" => "com:foo:user:created:v1:schema:v1",
+        "type" => "string"
+      })
+
       assert_raise(Polyn.ValidationException, fn ->
         Event.new(
           specversion: "foo",
           type: "user.created.v1",
-          source: "test"
+          source: "test",
+          dataschema: "com:foo:user:created:v1:schema:v1",
+          data: "foo"
         )
         |> JSON.serialize()
       end)
