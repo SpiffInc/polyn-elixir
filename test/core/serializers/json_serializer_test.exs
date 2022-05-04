@@ -32,6 +32,50 @@ defmodule Polyn.Serializers.JSONTest do
                time: ^now
              } = event
     end
+
+    test "turns data json into event" do
+      now = NaiveDateTime.utc_now() |> NaiveDateTime.to_iso8601()
+
+      expect(FileMock, :cwd!, fn -> "my_app" end)
+
+      expect(
+        FileMock,
+        :read,
+        fn "my_app/priv/polyn/schemas/user.created.v1/com.foo.user.created.v1.schema.v1.json" ->
+          {:ok,
+           Jason.encode!(%{
+             "$schema" => "http://json-schema.org/draft-07/schema",
+             "$id" => "com:foo:user:created:v1:schema:v1",
+             "type" => "object",
+             "properties" => %{"foo" => %{"type" => "string"}},
+             "required" => ["foo"]
+           })}
+        end
+      )
+
+      event =
+        %{
+          id: "foo",
+          specversion: "1.0.1",
+          type: "user.created.v1",
+          source: "test",
+          time: now,
+          dataschema: "com:foo:user:created:v1:schema:v1",
+          data: %{foo: "bar"}
+        }
+        |> Jason.encode!()
+        |> JSON.deserialize()
+
+      assert %Event{
+               id: "foo",
+               specversion: "1.0.1",
+               type: "user.created.v1",
+               source: "test",
+               time: ^now,
+               data: %{"foo" => "bar"},
+               dataschema: "com:foo:user:created:v1:schema:v1"
+             } = event
+    end
   end
 
   describe "serialize/1" do
