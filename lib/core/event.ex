@@ -23,6 +23,7 @@ defmodule Polyn.Event do
   `type` - Describes the type of event related to the originating occurrence.
   `data` - The event payload.
   `dataschema` - Identifies the schema that data adheres to.
+  `datacontenttype` - Content type of the data value. Must adhere to RFC 2046 format.
   `source` - Identifies the context in which an event happened.
   `time` - Timestamp of when the occurrence happened. Must adhere to RFC 3339.
   `polyntrace` - Previous events that led to this one
@@ -34,17 +35,27 @@ defmodule Polyn.Event do
           type: String.t(),
           data: any(),
           dataschema: String.t(),
+          datacontenttype: String.t(),
           source: String.t(),
           time: String.t(),
           polyntrace: list(map()),
           polynclient: map()
         }
 
+  @doc """
+  Create a new `Polyn.Event`
+  """
+  @spec new(fields :: keyword()) :: t()
   def new(fields) when is_list(fields) do
     fields =
       Keyword.put_new(fields, :id, UUID.uuid4())
       |> Keyword.put_new(:time, DateTime.to_iso8601(DateTime.utc_now()))
 
     struct!(__MODULE__, fields)
+  end
+
+  @spec new(fields :: map()) :: t()
+  def new(fields) when is_map(fields) do
+    Enum.into(fields, Keyword.new()) |> new()
   end
 end

@@ -1,4 +1,5 @@
 defmodule Polyn.FileBehaviour do
+  # Useful for mocking out the File module
   @moduledoc false
 
   @callback mkdir!(path :: Path.t()) :: :ok
