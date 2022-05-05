@@ -60,16 +60,16 @@ defmodule Polyn.Serializers.JSON do
 
   defp validate_event_schema(errors, json) do
     case get_cloud_event_schema(json["specversion"]) do
-      nil -> add_error(errors, "Polyn does not recognize specversion #{json["specversion"]}")
-      schema -> validate_schema(errors, schema, json)
+      {:error, _message} ->
+        add_error(errors, "Polyn does not recognize specversion #{json["specversion"]}")
+
+      schema ->
+        validate_schema(errors, schema, json)
     end
   end
 
   defp get_cloud_event_schema(version) do
     Polyn.CloudEvent.json_schema_for_version(version)
-  rescue
-    _error ->
-      nil
   end
 
   defp validate_dataschema(errors, json) when is_map_key(json, "dataschema") == false do
