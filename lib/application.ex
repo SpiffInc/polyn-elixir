@@ -7,7 +7,16 @@ defmodule Polyn.Application do
 
   @impl true
   def start(_type, _args) do
-    children = []
+    children = [
+      %{
+        id: Gnat.ConnectionSupervisor,
+        start: {
+          Gnat.ConnectionSupervisor,
+          :start_link,
+          [Application.fetch_env!(:polyn, :nats), [name: :polyn_connection_supervisor]]
+        }
+      }
+    ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
