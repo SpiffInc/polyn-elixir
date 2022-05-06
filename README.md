@@ -37,18 +37,15 @@ specification to create consistency.
 
 ## Event and Data Serialization
 
-Each Producer and Consumer can define what kind of serializer to use for the event. By default they
-will use `Polyn.Serializers.JSON`.
-
 ### `datacontenttype`
-The [Cloud Event Spec](https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md#datacontenttype) allows for the possibility for the `data` in the event to differ in format than the event itself. For example you may have
-an event that is being serialized as JSON, but the data inside is XML. By default the serializer will assume any `data` is the same format as the event itself. If the `data` differs you must specify its format with the
-`datacontenttype` attribute.
+
+The [Cloud Event Spec](https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md#datacontenttype) allows for the possibility for the `data` in the event not be JSON. For example you may have an event that is being
+serialized as JSON, but the data inside is XML. By default the serializer will assume any `data` JSON. If the `data` differs you must specify its format with the `datacontenttype` attribute.
 
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `polyn` to your list of dependencies in `mix.exs`:
+by adding `polyn` to your list of dependencies in `mix.exs` :
 
 ```elixir
 def deps do
@@ -63,4 +60,3 @@ end
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at [https://hexdocs.pm/polyn](https://hexdocs.pm/polyn).
-
