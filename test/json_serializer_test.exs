@@ -10,7 +10,7 @@ defmodule Polyn.Serializers.JSONTest do
   setup :verify_on_exit!
 
   describe "deserialize/1" do
-    test "turns non-data json into eventt" do
+    test "turns non-data json into event" do
       expect_cwd!("my_app")
 
       expect_schema_read("my_app", "user.created.v1", "com.foo.user.created.v1.schema.v1.json", %{
