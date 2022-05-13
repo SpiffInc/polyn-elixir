@@ -65,10 +65,10 @@ defmodule Polyn.Event do
 
   ## Examples
 
-      iex>Polyn.Event.Type("user.created")
+      iex>Polyn.Event.type("user.created")
       "com.my_app.user.created"
 
-      iex>Polyn.Event.Type("user.created", version: 2)
+      iex>Polyn.Event.type("user.created", version: 2)
       "com.my_app.user.created.v2"
   """
   @spec type(type :: binary()) :: binary()
@@ -80,6 +80,24 @@ defmodule Polyn.Event do
   def type(type, opts) do
     version = Keyword.fetch!(opts, :version)
     "#{domain()}.#{type}.v#{version}"
+  end
+
+  @doc """
+  Build an Event `dataschema` [URI](https://en.wikipedia.org/wiki/Uniform_Resource_Identifier)
+
+  ## Examples
+
+      iex>Polyn.Event.Type("user.created") |> Polyn.Event.dataschema()
+      "com:my_app:user:created:schema:v1"
+
+      iex>Polyn.Event.Type("user.created", version: 2) |> Polyn.Event.dataschema(version: 2)
+      "com:my_app:user:created:v2:schema:v2"
+  """
+  @spec dataschema(event_type :: binary(), opts :: keyword()) :: binary()
+  def dataschema(event_type, opts \\ []) do
+    version = Keyword.get(opts, :version, 1)
+    event_type = String.replace(event_type, ".", ":")
+    "#{event_type}:schema:v#{version}"
   end
 
   defp domain do
