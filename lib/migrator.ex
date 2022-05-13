@@ -14,16 +14,29 @@ defmodule Polyn.Migrator do
   # They need to stay in order
   # Each migration command can be a CloudEvent with a JSON Schema
 
+  require Logger
   alias Jetstream.API.Stream
 
   @migration_stream "POLYN_MIGRATIONS"
   @migration_subject "POLYN_MIGRATIONS.all"
 
   defmodule State do
-    defstruct [:config_service_auth_token, :migration_stream_info]
+    # Holds the state of the migration as we move through steps
+    @moduledoc false
+
+    @type t :: %Module{}
+
+    defstruct [
+      :config_service_auth_token,
+      :migration_stream_info,
+      already_run_migrations: [],
+      production_migrations: [],
+      application_migrations: []
+    ]
   end
 
   defmodule MigrationException do
+    @moduledoc false
     defexception [:message]
   end
 
@@ -31,7 +44,9 @@ defmodule Polyn.Migrator do
     init_state(config_service_auth_token: config_service_auth_token)
     |> fetch_migration_stream_info()
     |> create_migration_stream()
-    |> fetch_previous_migrations()
+    |> fetch_production_migrations()
+    |> fetch_already_run_migrations()
+    |> read_application_migrations()
   end
 
   defp init_state(opts) do
@@ -66,11 +81,58 @@ defmodule Polyn.Migrator do
     end
   end
 
-  defp fetch_previous_migrations(%{config_service_auth_token: _token} = state) do
+  # Migrations that have been already been run in whatever server
+  # we are connected to, could be production, test, or local
+  defp fetch_already_run_migrations(state), do: state
+
+  # Migrations that have been run in the production server
+  defp fetch_production_migrations(%{config_service_auth_token: _token} = state) do
     # HTTP.get(Application.fetch_env!(:polyn, :config_service_url))
     # |> Polyn.Serializers.JSON.deserialize()
 
     state
+  end
+
+  # Migrations that the application using Polyn owns
+  defp read_application_migrations(state) do
+    local_migration_files()
+    |> compile_migration_files()
+    |> execute_migration_modules(state)
+  end
+
+  defp local_migration_files do
+    case file().ls(migrations_dir()) do
+      {:ok, files} ->
+        files
+        |> Enum.filter(&is_elixir_script?/1)
+        |> Enum.sort_by(&extract_migration_timestamp/1)
+
+      {:error, _reason} ->
+        Logger.info("No migrations found at #{migrations_dir()}")
+        []
+    end
+  end
+
+  defp is_elixir_script?(file_name) do
+    String.ends_with?(file_name, ".exs")
+  end
+
+  defp extract_migration_timestamp(file_name) do
+    [timestamp | _] = String.split(file_name, "_")
+    String.to_integer(timestamp)
+  end
+
+  defp compile_migration_files(files) do
+    Enum.map(files, fn file_name ->
+      [{module, _content}] = code().compile_file(Path.join(migrations_dir(), file_name))
+      module
+    end)
+  end
+
+  defp execute_migration_modules(modules, state) do
+    Enum.reduce(modules, state, fn module, acc ->
+      module.change(acc)
+    end)
   end
 
   defp connection_name do
@@ -79,5 +141,17 @@ defmodule Polyn.Migrator do
 
   defp connection_config do
     Application.fetch_env!(:polyn, :nats)
+  end
+
+  defp migrations_dir do
+    Path.join(file().cwd!(), "/priv/polyn/migrations")
+  end
+
+  defp file do
+    Application.get_env(:polyn, :file, File)
+  end
+
+  defp code do
+    Application.get_env(:polyn, :code, Code)
   end
 end
