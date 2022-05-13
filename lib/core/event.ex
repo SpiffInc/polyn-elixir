@@ -74,6 +74,7 @@ defmodule Polyn.Event do
 
   ## Examples
 
+      # Given a `domain` of `com.my_app`
       iex>Polyn.Event.type("user.created")
       "com.my_app.user.created.v1"
 
@@ -91,21 +92,52 @@ defmodule Polyn.Event do
 
   ## Examples
 
-      iex>Polyn.Event.Type("user.created") |> Polyn.Event.dataschema()
+      # Given a `domain` of `com.my_app`
+      iex>Polyn.Event.type("user.created") |> Polyn.Event.dataschema()
       "com:my_app:user:created:v1:schema:v1"
 
-      iex>Polyn.Event.Type("user.created", version: 2) |> Polyn.Event.dataschema(version: 2)
+      iex>Polyn.Event.type("user.created", version: 2) |> Polyn.Event.dataschema(version: 2)
       "com:my_app:user:created:v2:schema:v2"
   """
   @spec dataschema(event_type :: binary(), opts :: keyword()) :: binary()
   def dataschema(event_type, opts \\ []) do
     version = Keyword.get(opts, :version, 1)
-    event_type = String.replace(event_type, ".", ":")
-    "#{event_type}:schema:v#{version}"
+    dot_to_colon("#{event_type}:schema:v#{version}")
+  end
+
+  @doc """
+  Build an Event `source` [URI](https://en.wikipedia.org/wiki/Uniform_Resource_Identifier)
+
+  ## Examples
+
+      # Given a `domain` of `com.my_app`
+      # Given a `source_root` of `orders`
+      iex>Polyn.Event.source("user_producer")
+      "com:my_app:orders:user_producer"
+
+      iex>Polyn.Event.source()
+      "com:my_app:orders"
+  """
+  @spec source() :: binary()
+  def source() do
+    dot_to_colon("#{domain()}:#{source_root()}")
+  end
+
+  @spec source(name :: binary()) :: binary()
+  def source(name) do
+    "#{source()}:#{dot_to_colon(name)}"
+  end
+
+  defp dot_to_colon(str) do
+    String.replace(str, ".", ":")
   end
 
   # The `domain` that all events will happen under
   defp domain do
     Application.fetch_env!(:polyn, :domain)
+  end
+
+  defp source_root do
+    Application.fetch_env!(:polyn, :source_root)
   end
 end

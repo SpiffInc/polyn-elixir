@@ -46,6 +46,14 @@ define that domain like this:
 config :polyn, :domain, "app.spiff"
 ```
 
+### Event Source Root
+
+The [Cloud Event Spec](https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md#source-1) specifies that every event MUST have a `source` attribute and recommends it be an absolute [URI](https://en.wikipedia.org/wiki/Uniform_Resource_Identifier). Your application must configure the `source_root` to use for events produced at the application level. Each event producer can include its own `source` to append to the `source_root` if it makes sense.
+
+```elixir
+config :polyn, :source_root, "my_app"
+```
+
 ### Connection
 
 You will need to provide the connection settings for your NATS connection. This will differ in-between environments.

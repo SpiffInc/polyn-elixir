@@ -20,4 +20,12 @@ defmodule Polyn.EventTest do
     assert "com:test:user:created:v1:schema:v2" ==
              Event.type("user.created") |> Event.dataschema(version: 2)
   end
+
+  test "source/0 creates source with domain and source_root" do
+    assert "com:test:my_app" == Event.source()
+  end
+
+  test "source/1 creates source with producer name appended" do
+    assert "com:test:my_app:orders" == Event.source("orders")
+  end
 end
