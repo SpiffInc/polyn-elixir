@@ -21,7 +21,7 @@ defmodule Polyn.Migrator do
   @migration_subject "POLYN_MIGRATIONS.all"
 
   defmodule State do
-    # Holds the state of the migration as we move through steps
+    # Holds the state of the migration as we move through migration steps
     @moduledoc false
 
     @type t :: %Module{}
@@ -33,6 +33,10 @@ defmodule Polyn.Migrator do
       production_migrations: [],
       application_migrations: []
     ]
+
+    def new(opts \\ []) do
+      struct!(__MODULE__, opts)
+    end
   end
 
   defmodule MigrationException do
