@@ -66,19 +66,14 @@ defmodule Polyn.Event do
   ## Examples
 
       iex>Polyn.Event.type("user.created")
-      "com.my_app.user.created"
+      "com.my_app.user.created.v1"
 
       iex>Polyn.Event.type("user.created", version: 2)
       "com.my_app.user.created.v2"
   """
-  @spec type(type :: binary()) :: binary()
-  def type(type) do
-    "#{domain()}.#{type}"
-  end
-
   @spec type(type :: binary(), opts :: keyword()) :: binary()
-  def type(type, opts) do
-    version = Keyword.fetch!(opts, :version)
+  def type(type, opts \\ []) do
+    version = Keyword.get(opts, :version, 1)
     "#{domain()}.#{type}.v#{version}"
   end
 
@@ -88,7 +83,7 @@ defmodule Polyn.Event do
   ## Examples
 
       iex>Polyn.Event.Type("user.created") |> Polyn.Event.dataschema()
-      "com:my_app:user:created:schema:v1"
+      "com:my_app:user:created:v1:schema:v1"
 
       iex>Polyn.Event.Type("user.created", version: 2) |> Polyn.Event.dataschema(version: 2)
       "com:my_app:user:created:v2:schema:v2"

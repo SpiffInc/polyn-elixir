@@ -3,8 +3,8 @@ defmodule Polyn.EventTest do
 
   alias Polyn.Event
 
-  test "type/1 creates an event" do
-    assert "com.test.user.created" == Event.type("user.created")
+  test "type/2 creates an event with v1 by default" do
+    assert "com.test.user.created.v1" == Event.type("user.created")
   end
 
   test "type/2 creates an event with a version" do
@@ -12,11 +12,12 @@ defmodule Polyn.EventTest do
   end
 
   test "dataschema/2 creates dataschema URI v1 by default" do
-    assert "com:test:user:created:schema:v1" == Event.type("user.created") |> Event.dataschema()
+    assert "com:test:user:created:v1:schema:v1" ==
+             Event.type("user.created") |> Event.dataschema()
   end
 
   test "dataschema/2 creates dataschema URI with other version" do
-    assert "com:test:user:created:schema:v2" ==
+    assert "com:test:user:created:v1:schema:v2" ==
              Event.type("user.created") |> Event.dataschema(version: 2)
   end
 end
