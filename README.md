@@ -37,6 +37,15 @@ specification to create consistency.
 
 ## Configuration
 
+### Domain
+
+The [Cloud Event Spec](https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md#type) specifies that every event "SHOULD be prefixed with a reverse-DNS name." You
+define that domain like this:
+
+```elixir
+config :polyn, :domain, "app.spiff"
+```
+
 ### Connection
 
 You will need to provide the connection settings for your NATS connection. This will differ in-between environments.
