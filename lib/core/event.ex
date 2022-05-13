@@ -49,6 +49,7 @@ defmodule Polyn.Event do
     fields =
       Keyword.put_new(fields, :id, UUID.uuid4())
       |> Keyword.put_new(:time, DateTime.to_iso8601(DateTime.utc_now()))
+      |> Keyword.put_new(:source, source())
 
     struct!(__MODULE__, fields)
     |> add_polyn_version()
