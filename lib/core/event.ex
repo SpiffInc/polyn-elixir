@@ -60,13 +60,23 @@ defmodule Polyn.Event do
   end
 
   @doc """
-  Build an Event `type` field. Will automatically prefix your applications
+  Build an Event `type` field. Will automatically prefix your application's
   reverse-DNS name and handle version syntax
+
+  ## Examples
+
+      iex>Polyn.Event.Type("user.created")
+      "com.my_app.user.created"
+
+      iex>Polyn.Event.Type("user.created", version: 2)
+      "com.my_app.user.created.v2"
   """
+  @spec type(type :: binary()) :: binary()
   def type(type) do
     "#{domain()}.#{type}"
   end
 
+  @spec type(type :: binary(), opts :: keyword()) :: binary()
   def type(type, opts) do
     version = Keyword.fetch!(opts, :version)
     "#{domain()}.#{type}.v#{version}"
