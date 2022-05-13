@@ -24,9 +24,11 @@ defmodule Polyn.Migrator do
     # Holds the state of the migration as we move through migration steps
     @moduledoc false
 
-    @type t :: %Module{}
+    # @type t :: %Module{}
 
     defstruct [
+      :running_migration_id,
+      :running_migration_command_num,
       :config_service_auth_token,
       :migration_stream_info,
       already_run_migrations: [],
@@ -36,6 +38,57 @@ defmodule Polyn.Migrator do
 
     def new(opts \\ []) do
       struct!(__MODULE__, opts)
+    end
+  end
+
+  defmodule LocalRunner do
+    # A way to update the migration state without exposing it to
+    # developers creating migration files. This will allow Migration
+    # functions to update the state without developers needing to be
+    # aware of it.
+    @moduledoc false
+    use Agent
+
+    def start_link(state) do
+      Agent.start_link(fn -> state end)
+    end
+
+    def stop(pid) do
+      Agent.stop(pid)
+    end
+
+    @doc "Add a new migration event to the application migrations state"
+    def add_application_migration(pid, event) do
+      Agent.update(pid, fn state ->
+        migrations = Enum.concat(state.application_migrations, [event])
+        Map.put(state, :application_migrations, migrations)
+      end)
+    end
+
+    @doc "Update the state to know the id of the migration running"
+    def update_running_migration_id(pid, id) do
+      Agent.update(pid, fn state ->
+        Map.put(state, :running_migration_id, id)
+      end)
+    end
+
+    @doc "Update the state to know the number of the command running in the migration"
+    def update_running_migration_command_num(pid, num) do
+      Agent.update(pid, fn state ->
+        Map.put(state, :running_migration_command_num, num)
+      end)
+    end
+
+    def get_running_migration_id(pid) do
+      get_state(pid).running_migration_id
+    end
+
+    def get_running_migration_command_num(pid) do
+      get_state(pid).running_migration_command_num
+    end
+
+    def get_state(pid) do
+      Agent.get(pid, fn state -> state end)
     end
   end
 
@@ -57,6 +110,9 @@ defmodule Polyn.Migrator do
     struct!(State, opts)
   end
 
+  # We'll keep all migrations on a JetStream Stream so that we can
+  # keep them in order and mesh them together from all the different
+  # system components
   defp create_migration_stream(%{migration_stream_info: nil} = state) do
     stream =
       struct!(Stream, %{
@@ -109,7 +165,7 @@ defmodule Polyn.Migrator do
       {:ok, files} ->
         files
         |> Enum.filter(&is_elixir_script?/1)
-        |> Enum.sort_by(&extract_migration_timestamp/1)
+        |> Enum.sort_by(&extract_migration_id/1)
 
       {:error, _reason} ->
         Logger.info("No migrations found at #{migrations_dir()}")
@@ -121,21 +177,27 @@ defmodule Polyn.Migrator do
     String.ends_with?(file_name, ".exs")
   end
 
-  defp extract_migration_timestamp(file_name) do
-    [timestamp | _] = String.split(file_name, "_")
-    String.to_integer(timestamp)
+  defp extract_migration_id(file_name) do
+    [id | _] = String.split(file_name, "_")
+    String.to_integer(id)
   end
 
   defp compile_migration_files(files) do
     Enum.map(files, fn file_name ->
+      id = extract_migration_id(file_name)
       [{module, _content}] = code().compile_file(Path.join(migrations_dir(), file_name))
-      module
+      {module, id}
     end)
   end
 
   defp execute_migration_modules(modules, state) do
-    Enum.reduce(modules, state, fn module, acc ->
-      module.change(acc)
+    {:ok, pid} = LocalRunner.start_link(state)
+    Process.put(:polyn_local_migration_runner, pid)
+
+    Enum.each(modules, fn {module, id} ->
+      LocalRunner.update_running_migration_id(id)
+      LocalRunner.update_running_migration_command_num(0)
+      module.change()
     end)
   end
 
