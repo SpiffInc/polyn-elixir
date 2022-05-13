@@ -58,4 +58,21 @@ defmodule Polyn.Event do
   def new(fields) when is_map(fields) do
     Enum.into(fields, Keyword.new()) |> new()
   end
+
+  @doc """
+  Build an Event `type` field. Will automatically prefix your applications
+  reverse-DNS name and handle version syntax
+  """
+  def type(type) do
+    "#{domain()}.#{type}"
+  end
+
+  def type(type, opts) do
+    version = Keyword.fetch!(opts, :version)
+    "#{domain()}.#{type}.v#{version}"
+  end
+
+  defp domain do
+    Application.fetch_env!(:polyn, :domain)
+  end
 end
