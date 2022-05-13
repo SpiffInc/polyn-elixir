@@ -109,7 +109,7 @@ defmodule Polyn.Serializers.JSONTest do
 
       now = NaiveDateTime.utc_now() |> NaiveDateTime.to_iso8601()
       langversion = System.build_info().version
-      version = Polyn.MixProject.version()
+      version = "#{Application.spec(:polyn, :vsn)}"
 
       json =
         Event.new(

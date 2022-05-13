@@ -13,8 +13,7 @@ defmodule Polyn.Event do
             polyntrace: [],
             polynclient: %{
               lang: "elixir",
-              langversion: System.build_info().version,
-              version: Polyn.MixProject.version()
+              langversion: System.build_info().version
             }
 
   @typedoc """
@@ -52,11 +51,21 @@ defmodule Polyn.Event do
       |> Keyword.put_new(:time, DateTime.to_iso8601(DateTime.utc_now()))
 
     struct!(__MODULE__, fields)
+    |> add_polyn_version()
   end
 
   @spec new(fields :: map()) :: t()
   def new(fields) when is_map(fields) do
     Enum.into(fields, Keyword.new()) |> new()
+  end
+
+  defp add_polyn_version(%__MODULE__{} = event) do
+    put_in(event, [Access.key!(:polynclient), :version], polyn_version())
+  end
+
+  defp polyn_version do
+    # Interporalating cuz `vsn` comes out as charlist instead of String
+    "#{Application.spec(:polyn, :vsn)}"
   end
 
   @doc """
@@ -95,6 +104,7 @@ defmodule Polyn.Event do
     "#{event_type}:schema:v#{version}"
   end
 
+  # The `domain` that all events will happen under
   defp domain do
     Application.fetch_env!(:polyn, :domain)
   end

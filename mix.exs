@@ -1,12 +1,12 @@
 defmodule Polyn.MixProject do
   use Mix.Project
 
-  def version, do: "0.1.0"
+  @version "0.1.0"
 
   def project do
     [
       app: :polyn,
-      version: version(),
+      version: @version,
       elixir: "~> 1.12",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
