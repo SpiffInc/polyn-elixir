@@ -1,5 +1,5 @@
 defmodule Polyn.Event do
-  import Polyn.Naming
+  alias Polyn.Naming
 
   @moduledoc """
   The Event structure used throughout Polyn.
@@ -105,7 +105,7 @@ defmodule Polyn.Event do
   @spec dataschema(event_type :: binary(), opts :: keyword()) :: binary()
   def dataschema(event_type, opts \\ []) do
     version = Keyword.get(opts, :version, 1)
-    dot_to_colon("#{event_type}:schema:v#{version}")
+    Naming.dot_to_colon("#{event_type}:schema:v#{version}")
   end
 
   @doc """
@@ -123,12 +123,12 @@ defmodule Polyn.Event do
   """
   @spec source() :: binary()
   def source() do
-    dot_to_colon("#{domain()}:#{source_root()}")
+    Naming.dot_to_colon("#{domain()}:#{source_root()}")
   end
 
   @spec source(name :: binary()) :: binary()
   def source(name) do
-    "#{source()}:#{dot_to_colon(name)}"
+    "#{source()}:#{Naming.dot_to_colon(name)}"
   end
 
   # The `domain` that all events will happen under
