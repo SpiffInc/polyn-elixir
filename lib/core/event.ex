@@ -1,4 +1,6 @@
 defmodule Polyn.Event do
+  import Polyn.Naming
+
   @moduledoc """
   The Event structure used throughout Polyn.
   """
@@ -127,10 +129,6 @@ defmodule Polyn.Event do
   @spec source(name :: binary()) :: binary()
   def source(name) do
     "#{source()}:#{dot_to_colon(name)}"
-  end
-
-  defp dot_to_colon(str) do
-    String.replace(str, ".", ":")
   end
 
   # The `domain` that all events will happen under
