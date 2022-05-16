@@ -69,6 +69,20 @@ config :polyn, :nats, %{
 }
 ```
 
+## Event Schema Location
+
+Every Polyn Event must have a `dataschema` associated with it. Those JSON Schema files need to go in `priv/polyn/schemas`. Every event will be its own directory in the `schemas` folder without the `domain` prefix. Every event folder will have all the schema versions as json files inside it (also without the `domain` prefix). For example:
+
+```
+priv/
+├─ polyn/
+│  ├─ schemas/
+│  │  ├─ user.updated.v2/
+│  │  │  ├─ user.updated.v2.schema.v1.json
+│  │  ├─ user.created.v1/
+│  │  │  ├─ user.created.v1.schema.v1.json
+```
+
 ## Event and Data Serialization
 
 ### `datacontenttype`

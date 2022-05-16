@@ -5,6 +5,8 @@ defmodule Polyn.Serializers.JSON do
 
   alias Polyn.Naming
 
+  @user_schemas_dir "/priv/polyn/schemas"
+
   @doc """
   Convert a JSON payload into a Polyn.Event struct
   Raises an error if json is not valid
@@ -99,7 +101,7 @@ defmodule Polyn.Serializers.JSON do
   end
 
   defp dataschema_dir do
-    Path.join(file().cwd!(), "/priv/polyn/schemas")
+    Path.join(file().cwd!(), @user_schemas_dir)
   end
 
   defp validate_schema(errors, schema, json) do
