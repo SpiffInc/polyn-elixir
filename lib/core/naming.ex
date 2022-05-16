@@ -26,4 +26,24 @@ defmodule Polyn.Naming do
   def colon_to_dot(str) do
     String.replace(str, ":", ".")
   end
+
+  @doc """
+  Remove the `:domain` prefix from a name
+
+  ## Examples
+
+      iex>Polyn.Naming.trim_domain_prefix("com:acme:user:created:v1:schema:v1")
+      "user:created:v1:schema:v1"
+
+      iex>Polyn.Naming.trim_domain_prefix("com.acme.user.created.v1.schema.v1")
+      "user.created.v1.schema.v1"
+  """
+  def trim_domain_prefix(str) do
+    String.replace(str, "#{domain()}.", "", global: false)
+    |> String.replace("#{dot_to_colon(domain())}:", "", global: false)
+  end
+
+  defp domain do
+    Application.fetch_env!(:polyn, :domain)
+  end
 end
