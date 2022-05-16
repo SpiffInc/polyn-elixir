@@ -1,8 +1,9 @@
 defmodule Polyn.Serializers.JSON do
-  @moduledoc """
-  JSON Serializer for Polyn events. Functions will raise if
-  inconsistencies are found
-  """
+  # JSON Serializer for Polyn events. Functions will raise if
+  # inconsistencies are found
+  @moduledoc false
+
+  alias Polyn.Naming
 
   @doc """
   Convert a JSON payload into a Polyn.Event struct
@@ -91,7 +92,8 @@ defmodule Polyn.Serializers.JSON do
   end
 
   defp get_dataschema(event_type, dataschema) do
-    dataschema = String.replace(dataschema, ":", ".") <> ".json"
+    event_type = Naming.trim_domain_prefix(event_type)
+    dataschema = Naming.colon_to_dot(dataschema <> ".json") |> Naming.trim_domain_prefix()
 
     file().read(Path.join(dataschema_dir(), "#{event_type}/#{dataschema}"))
   end

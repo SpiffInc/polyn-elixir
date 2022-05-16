@@ -13,7 +13,7 @@ defmodule Polyn.Serializers.JSONTest do
     test "turns non-data json into event" do
       expect_cwd!("my_app")
 
-      expect_schema_read("my_app", "user.created.v1", "com.foo.user.created.v1.schema.v1.json", %{
+      expect_schema_read("my_app", "user.created.v1", "user.created.v1.schema.v1.json", %{
         "$schema" => "http://json-schema.org/draft-07/schema",
         "$id" => "com:foo:user:created:v1:schema:v1",
         "type" => "null"
@@ -25,11 +25,11 @@ defmodule Polyn.Serializers.JSONTest do
         %{
           id: "foo",
           specversion: "1.0.1",
-          type: "user.created.v1",
+          type: Event.type("user.created"),
           source: "test",
           time: now,
           data: nil,
-          dataschema: "com:foo:user:created:v1:schema:v1"
+          dataschema: Event.type("user.created") |> Event.dataschema()
         }
         |> Jason.encode!()
         |> JSON.deserialize()
@@ -37,11 +37,11 @@ defmodule Polyn.Serializers.JSONTest do
       assert %Event{
                id: "foo",
                specversion: "1.0.1",
-               type: "user.created.v1",
+               type: "com.test.user.created.v1",
                source: "test",
                time: ^now,
                data: nil,
-               dataschema: "com:foo:user:created:v1:schema:v1"
+               dataschema: "com:test:user:created:v1:schema:v1"
              } = event
     end
 
@@ -50,9 +50,9 @@ defmodule Polyn.Serializers.JSONTest do
 
       expect_cwd!("my_app")
 
-      expect_schema_read("my_app", "user.created.v1", "com.foo.user.created.v1.schema.v1.json", %{
+      expect_schema_read("my_app", "user.created.v1", "user.created.v1.schema.v1.json", %{
         "$schema" => "http://json-schema.org/draft-07/schema",
-        "$id" => "com:foo:user:created:v1:schema:v1",
+        "$id" => "com:test:user:created:v1:schema:v1",
         "type" => "object",
         "properties" => %{"foo" => %{"type" => "string"}},
         "required" => ["foo"]
@@ -62,10 +62,10 @@ defmodule Polyn.Serializers.JSONTest do
         %{
           id: "foo",
           specversion: "1.0.1",
-          type: "user.created.v1",
+          type: Event.type("user.created"),
           source: "test",
           time: now,
-          dataschema: "com:foo:user:created:v1:schema:v1",
+          dataschema: Event.type("user:created") |> Event.dataschema(),
           data: %{foo: "bar"}
         }
         |> Jason.encode!()
@@ -74,11 +74,11 @@ defmodule Polyn.Serializers.JSONTest do
       assert %Event{
                id: "foo",
                specversion: "1.0.1",
-               type: "user.created.v1",
+               type: "com.test.user.created.v1",
                source: "test",
                time: ^now,
                data: %{"foo" => "bar"},
-               dataschema: "com:foo:user:created:v1:schema:v1"
+               dataschema: "com:test:user:created:v1:schema:v1"
              } = event
     end
 
@@ -101,7 +101,7 @@ defmodule Polyn.Serializers.JSONTest do
     test "turns non-data event into JSON" do
       expect_cwd!("my_app")
 
-      expect_schema_read("my_app", "user.created.v1", "com.foo.user.created.v1.schema.v1.json", %{
+      expect_schema_read("my_app", "user.created.v1", "user.created.v1.schema.v1.json", %{
         "$schema" => "http://json-schema.org/draft-07/schema",
         "$id" => "com:foo:user:created:v1:schema:v1",
         "type" => "null"
@@ -114,17 +114,17 @@ defmodule Polyn.Serializers.JSONTest do
       json =
         Event.new(
           specversion: "1.0.1",
-          type: "user.created.v1",
+          type: Event.type("user.created"),
           source: "test",
           time: now,
-          dataschema: "com:foo:user:created:v1:schema:v1"
+          dataschema: Event.type("user:created") |> Event.dataschema()
         )
         |> JSON.serialize()
         |> Jason.decode!()
 
       assert %{
                "specversion" => "1.0.1",
-               "type" => "user.created.v1",
+               "type" => "com.test.user.created.v1",
                "source" => "test",
                "time" => ^now,
                "polyntrace" => [],
@@ -134,7 +134,7 @@ defmodule Polyn.Serializers.JSONTest do
                  "version" => ^version
                },
                "data" => nil,
-               "dataschema" => "com:foo:user:created:v1:schema:v1",
+               "dataschema" => "com:test:user:created:v1:schema:v1",
                "datacontenttype" => "application/json"
              } = json
 
@@ -144,7 +144,7 @@ defmodule Polyn.Serializers.JSONTest do
     test "turns data event into JSON" do
       expect_cwd!("my_app")
 
-      expect_schema_read("my_app", "user.created.v1", "com.foo.user.created.v1.schema.v1.json", %{
+      expect_schema_read("my_app", "user.created.v1", "user.created.v1.schema.v1.json", %{
         "$schema" => "http://json-schema.org/draft-07/schema",
         "$id" => "com:foo:user:created:v1:schema:v1",
         "type" => "object",
@@ -155,23 +155,23 @@ defmodule Polyn.Serializers.JSONTest do
       json =
         Event.new(
           specversion: "1.0.1",
-          type: "user.created.v1",
+          type: Event.type("user.created"),
           source: "test",
           data: %{"foo" => "bar"},
-          dataschema: "com:foo:user:created:v1:schema:v1"
+          dataschema: Event.type("user:created") |> Event.dataschema()
         )
         |> JSON.serialize()
         |> Jason.decode!()
 
       assert json["data"] == %{"foo" => "bar"}
-      assert json["dataschema"] == "com:foo:user:created:v1:schema:v1"
+      assert json["dataschema"] == "com:test:user:created:v1:schema:v1"
       assert json["datacontenttype"] == "application/json"
     end
 
     test "works with different datacontenttype than json" do
       expect_cwd!("my_app")
 
-      expect_schema_read("my_app", "user.created.v1", "com.foo.user.created.v1.schema.v1.json", %{
+      expect_schema_read("my_app", "user.created.v1", "user.created.v1.schema.v1.json", %{
         "$schema" => "http://json-schema.org/draft-07/schema",
         "$id" => "com:foo:user:created:v1:schema:v1",
         "type" => "string",
@@ -181,9 +181,9 @@ defmodule Polyn.Serializers.JSONTest do
       json =
         Event.new(
           specversion: "1.0.1",
-          type: "user.created.v1",
+          type: Event.type("user.created"),
           source: "test",
-          dataschema: "com:foo:user:created:v1:schema:v1",
+          dataschema: Event.type("user.created") |> Event.dataschema(),
           datacontenttype: "application/xml",
           data: "<much wow=\"xml\"/>"
         )
