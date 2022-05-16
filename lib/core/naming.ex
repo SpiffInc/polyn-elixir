@@ -43,6 +43,21 @@ defmodule Polyn.Naming do
     |> String.replace("#{dot_to_colon(domain())}:", "", global: false)
   end
 
+  @doc """
+  Give a version number to a name
+
+  ## Examples
+
+      iex>Polyn.Naming.version_suffix("com:acme:user:created:")
+      "com:acme:user:created:v1"
+
+      iex>Polyn.Naming.version_suffix("com.acme.user.created.", 2)
+      "com.acme.user.created.v2"
+  """
+  def version_suffix(str, version \\ 1) do
+    "#{str}v#{version}"
+  end
+
   defp domain do
     Application.fetch_env!(:polyn, :domain)
   end

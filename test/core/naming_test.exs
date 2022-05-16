@@ -29,4 +29,14 @@ defmodule Polyn.NamingTest do
                Naming.trim_domain_prefix("com.test.user.created.com.test.v1.schema.v1")
     end
   end
+
+  test "version_suffix/1 defaults to version 1" do
+    assert Naming.version_suffix("com:acme:user:created:") ==
+             "com:acme:user:created:v1"
+  end
+
+  test "version_suffix/2 adds version" do
+    assert Naming.version_suffix("com:acme:user:created:", 2) ==
+             "com:acme:user:created:v2"
+  end
 end

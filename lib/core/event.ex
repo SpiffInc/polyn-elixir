@@ -87,7 +87,7 @@ defmodule Polyn.Event do
   @spec type(type :: binary(), opts :: keyword()) :: binary()
   def type(type, opts \\ []) do
     version = Keyword.get(opts, :version, 1)
-    "#{domain()}.#{type}.v#{version}"
+    "#{domain()}.#{type}." |> Naming.version_suffix(version)
   end
 
   @doc """
@@ -105,7 +105,7 @@ defmodule Polyn.Event do
   @spec dataschema(event_type :: binary(), opts :: keyword()) :: binary()
   def dataschema(event_type, opts \\ []) do
     version = Keyword.get(opts, :version, 1)
-    Naming.dot_to_colon("#{event_type}:schema:v#{version}")
+    Naming.dot_to_colon("#{event_type}:schema:") |> Naming.version_suffix(version)
   end
 
   @doc """
