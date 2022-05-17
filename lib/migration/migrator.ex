@@ -1,19 +1,5 @@
 defmodule Polyn.Migrator do
-  # Different system components
-  # Different programming languages
-  # All making configuration changes to central data system
-  # Doing it in a centralized place would create a productivity bottleneck
-  # There needs to be a complete record of all migrations from all components
-  # Where are those stitched together?
-  # Need a common DSL language to represent instructions so that each programming
-  # language can convert them to something that can execute
-  # Can put them all in a stream call "migrations"
-
-  # Migrations need to run on application start
-  # They need to not run if they've already run (A delete could be destructive)
-  # They need to stay in order
-  # Each migration command can be a CloudEvent with a JSON Schema
-
+  @moduledoc false
   require Logger
   alias Jetstream.API.Stream
   alias Polyn.Serializers.JSON
@@ -25,7 +11,24 @@ defmodule Polyn.Migrator do
     # Holds the state of the migration as we move through migration steps
     @moduledoc false
 
-    # @type t :: %Module{}
+    @typedoc """
+    * `:running_migration_id` - The timestamp/id of the migration file being run. Taken from the beginning of the file name
+    * `:running_migration_command_num` - The number of the command being run in the migration module
+    * `:config_service_auth_token` - The auth token to access a production API endpoint containing production migration events
+    * `:already_run_migrations` - Migrations we've determined have already been executed on the server
+    * `:production_migrations` - Migrations that have been run on the production server already
+    * `:application_migrations` - Migrations that live locally in the codebase
+    """
+
+    @type t :: %__MODULE__{
+      running_migration_id: non_neg_integer() | nil,
+      running_migration_command_num: non_neg_integer() | nil,
+      config_service_auth_token: binary(),
+      migration_stream_info: Stream.info() | nil,
+      already_run_migrations: list(Polyn.Event.t()),
+      production_migrations: list(Polyn.Event.t())
+      application_migrations: list(Polyn.Event.t())
+    }
 
     defstruct [
       :running_migration_id,

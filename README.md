@@ -83,6 +83,8 @@ priv/
 │  │  │  ├─ user.created.v1.schema.v1.json
 ```
 
+## Server Migrations
+
 ## Event and Data Serialization
 
 ### `datacontenttype`
