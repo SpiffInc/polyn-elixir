@@ -21,14 +21,14 @@ defmodule Polyn.Migrator do
     """
 
     @type t :: %__MODULE__{
-      running_migration_id: non_neg_integer() | nil,
-      running_migration_command_num: non_neg_integer() | nil,
-      config_service_auth_token: binary(),
-      migration_stream_info: Stream.info() | nil,
-      already_run_migrations: list(Polyn.Event.t()),
-      production_migrations: list(Polyn.Event.t())
-      application_migrations: list(Polyn.Event.t())
-    }
+            running_migration_id: non_neg_integer() | nil,
+            running_migration_command_num: non_neg_integer() | nil,
+            config_service_auth_token: binary(),
+            migration_stream_info: Stream.info() | nil,
+            already_run_migrations: list(Polyn.Event.t()),
+            production_migrations: list(Polyn.Event.t()),
+            application_migrations: list(Polyn.Event.t())
+          }
 
     defstruct [
       :running_migration_id,
