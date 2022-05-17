@@ -10,7 +10,13 @@ defmodule Polyn.MigrationGeneratorTest do
   test "adds folders if they don't exist" do
     expect_cwd!("my_app")
     expect_mkdir_p!("my_app")
-    MigrationGenerator.run()
+    MigrationGenerator.run("foo")
+  end
+
+  test "creates a migration" do
+    expect_cwd!("my_app")
+    expect_mkdir_p!("my_app")
+    MigrationGenerator.run("foo")
   end
 
   defp expect_mkdir_p!(cwd) do
