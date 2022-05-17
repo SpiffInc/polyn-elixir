@@ -21,6 +21,9 @@ defmodule Polyn.MigratorTest do
   end
 
   test "creates migration stream if not there" do
+    expect_cwd!("my_app")
+    expect_ls("my_app", [])
+
     Stream.delete(connection_name(), @migration_stream)
     Migrator.run("foo")
     assert {:ok, info} = Stream.info(connection_name(), @migration_stream)
@@ -28,6 +31,9 @@ defmodule Polyn.MigratorTest do
   end
 
   test "ignores migration stream if already existing" do
+    expect_cwd!("my_app")
+    expect_ls("my_app", [])
+
     {:ok, _stream} =
       Stream.create(connection_name(), %Stream{
         name: @migration_stream,

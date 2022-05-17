@@ -25,7 +25,7 @@ defmodule Polyn.MigrationTest do
              type: "com.test.polyn.stream.create.v1",
              specversion: "1.0.1",
              source: "com:test:my_app",
-             dataschema: "polyn:stream:create:schema:v1",
+             dataschema: "polyn:stream:create:v1:schema:v1",
              data: %{name: "test_stream", subjects: ["foo"]}
            } = migration
   end
@@ -41,7 +41,7 @@ defmodule Polyn.MigrationTest do
              type: "com.test.polyn.stream.create.v1",
              specversion: "1.0.1",
              source: "com:test:my_app",
-             dataschema: "polyn:stream:create:schema:v1",
+             dataschema: "polyn:stream:create:v1:schema:v1",
              data: %{name: "test_stream", subjects: ["foo"]}
            } = migration1
 
@@ -50,7 +50,7 @@ defmodule Polyn.MigrationTest do
              type: "com.test.polyn.stream.create.v1",
              specversion: "1.0.1",
              source: "com:test:my_app",
-             dataschema: "polyn:stream:create:schema:v1",
+             dataschema: "polyn:stream:create:v1:schema:v1",
              data: %{name: "test_stream2", subjects: ["bar"]}
            } = migration2
   end

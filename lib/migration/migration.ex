@@ -7,6 +7,7 @@ defmodule Polyn.Migration do
   alias Jetstream.API.Stream
   alias Polyn.Event
   alias Polyn.Migrator.LocalRunner
+  alias Polyn.Naming
 
   @spec create_stream(stream_options :: keyword()) :: :ok
   def create_stream(options) when is_list(options) do
@@ -32,7 +33,7 @@ defmodule Polyn.Migration do
         specversion: "1.0.1",
         # We don't want the consuming application's domain in the polyn
         # dataschemas since they will be the same in every app
-        dataschema: Naming.trim_domain_prefix(type),
+        dataschema: Naming.trim_domain_prefix(type) |> Event.dataschema(),
         source: Event.source(),
         data: data
       )
