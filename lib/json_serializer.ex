@@ -37,16 +37,15 @@ defmodule Polyn.Serializers.JSON do
   @spec serialize(event :: Polyn.Event.t()) :: String.t()
   def serialize(event) do
     Map.from_struct(event)
-    |> Enum.reduce(%{}, fn field, acc ->
-      serialize_field(acc, field)
-    end)
+    |> stringify_keys()
     |> add_datacontenttype()
     |> validate()
     |> Jason.encode!()
   end
 
-  defp serialize_field(data, {key, value}) do
-    Map.put(data, Atom.to_string(key), value)
+  # The validator library expects all map keys to be strings
+  defp stringify_keys(event) do
+    Jason.encode!(event) |> Jason.decode!()
   end
 
   defp add_datacontenttype(%{"datacontenttype" => nil} = json) do

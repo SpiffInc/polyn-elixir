@@ -157,7 +157,7 @@ defmodule Polyn.Serializers.JSONTest do
           specversion: "1.0.1",
           type: Event.type("user.created"),
           source: "test",
-          data: %{"foo" => "bar"},
+          data: %{foo: "bar"},
           dataschema: Event.type("user:created") |> Event.dataschema()
         )
         |> JSON.serialize()
