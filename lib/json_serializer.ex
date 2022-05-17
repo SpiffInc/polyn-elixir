@@ -67,6 +67,7 @@ defmodule Polyn.Serializers.JSON do
 
       schema ->
         validate_schema(errors, schema, json)
+        |> IO.inspect(label: "event spec errors")
     end
   end
 
@@ -86,6 +87,7 @@ defmodule Polyn.Serializers.JSON do
     case get_dataschema(json["type"], json["dataschema"]) do
       {:ok, schema} ->
         validate_schema(errors, Jason.decode!(schema), json["data"])
+        |> IO.inspect(label: "data spec errors")
 
       {:error, _reason} ->
         add_error(errors, "Polyn could not find dataschema #{json["dataschema"]}")
@@ -96,17 +98,21 @@ defmodule Polyn.Serializers.JSON do
     event_type = Naming.trim_domain_prefix(event_type)
     dataschema = Naming.colon_to_dot(dataschema <> ".json") |> Naming.trim_domain_prefix()
 
-    file().read(Path.join(dataschema_dir(), "#{event_type}/#{dataschema}"))
+    file().read(Path.join(dataschema_dir(event_type), dataschema))
   end
 
-  defp dataschema_dir do
-    Path.join(file().cwd!(), @user_schemas_dir)
+  defp dataschema_dir("polyn" <> _suffix = event_type) do
+    Application.app_dir(:polyn, ["priv", "migration_events", event_type])
+  end
+
+  defp dataschema_dir(event_type) do
+    Path.join([file().cwd!(), @user_schemas_dir, event_type])
   end
 
   defp validate_schema(errors, schema, json) do
-    schema = ExJsonSchema.Schema.resolve(schema)
+    schema_root = ExJsonSchema.Schema.resolve(schema)
 
-    case ExJsonSchema.Validator.validate(schema, json) do
+    case ExJsonSchema.Validator.validate(schema_root, json) do
       :ok ->
         errors
 
@@ -114,6 +120,7 @@ defmodule Polyn.Serializers.JSON do
         Enum.map(json_errors, fn {message, property_path} ->
           "Property: `#{property_path}` - #{message}"
         end)
+        |> add_error("JSON Schema with id #{schema["$id"]} did not pass validation")
         |> Enum.concat(errors)
     end
   end
