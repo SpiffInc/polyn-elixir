@@ -2,6 +2,7 @@ defmodule Polyn.FileBehaviour do
   # Useful for mocking out the File module
   @moduledoc false
 
+  @callback mkdir_p!(path :: Path.t()) :: :ok
   @callback mkdir!(path :: Path.t()) :: :ok
   @callback ls(path :: Path.t()) :: {:ok, [binary()]} | {:error, File.posix()}
   @callback cwd!() :: binary()

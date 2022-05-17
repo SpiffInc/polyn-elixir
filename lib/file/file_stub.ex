@@ -2,6 +2,10 @@ defmodule Polyn.FileStub do
   @moduledoc false
   @behaviour Polyn.FileBehaviour
 
+  def mkdir_p!(_path) do
+    :ok
+  end
+
   def mkdir!(_path) do
     :ok
   end
