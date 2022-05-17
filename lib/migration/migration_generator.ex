@@ -68,11 +68,11 @@ defmodule Polyn.MigrationGenerator do
   end
 
   Mix.Generator.embed_template(:migration, """
-    defmodule <%= inspect @mod %> do
-      import Polyn.Migration
+  defmodule <%= inspect @mod %> do
+    import Polyn.Migration
 
-      def change do
-      end
+    def change do
     end
+  end
   """)
 end

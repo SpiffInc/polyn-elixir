@@ -224,7 +224,7 @@ defmodule Polyn.Migrator do
 
   defp execute_migration_event(%{type: "polyn.stream.create"} = event) do
     stream = struct(Stream, event.data)
-    Stream.create(connection_name, stream)
+    Stream.create(connection_name(), stream)
   end
 
   defp connection_name do
