@@ -4,7 +4,7 @@ defmodule Polyn.MigrationGenerator do
   require Mix.Generator
   import Polyn.Migration.Utils, only: [migrations_dir: 0]
 
-  def run(name) do
+  def run([name]) do
     create_directory()
     validate_uniqueness(name)
     generate_file(name)
