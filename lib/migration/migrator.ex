@@ -124,8 +124,7 @@ defmodule Polyn.Migrator do
         name: @migration_stream,
         subjects: [@migration_subject],
         discard: :new,
-        # TODO: Update based on cluster info
-        num_replicas: 1
+        num_replicas: migration_stream_replicas()
       })
 
     case Stream.create(connection_name(), stream) do
@@ -138,6 +137,17 @@ defmodule Polyn.Migrator do
   end
 
   defp create_migration_stream(state), do: state
+
+  defp migration_stream_replicas do
+    info = Gnat.server_info(connection_name())
+    num_servers = Map.get(info, :connect_urls, []) |> Enum.count()
+
+    cond do
+      num_servers == 0 -> 1
+      num_servers < 3 -> num_servers
+      num_servers >= 3 -> 3
+    end
+  end
 
   defp fetch_migration_stream_info(state) do
     case Stream.info(connection_name(), @migration_stream) do
