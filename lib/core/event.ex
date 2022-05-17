@@ -91,6 +91,21 @@ defmodule Polyn.Event do
   end
 
   @doc """
+  Updates the event to have a bare `type` field without domain or versioning
+
+  ## Examples
+
+      # Given a `domain` of `com.my_app`
+      iex>Polyn.Event.with_bare_type(%Event{type: "com.my_app.user.created.v1"})
+      %Event{type: "user.created"}
+  """
+  @spec with_bare_type(event :: t()) :: t()
+  def with_bare_type(%{type: type} = event) do
+    type = Naming.trim_domain_prefix(type) |> Naming.trim_version_suffix()
+    Map.put(event, :type, type)
+  end
+
+  @doc """
   Build an Event `dataschema` [URI](https://en.wikipedia.org/wiki/Uniform_Resource_Identifier)
 
   ## Examples

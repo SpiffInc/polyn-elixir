@@ -43,4 +43,9 @@ defmodule Polyn.EventTest do
   test "source/1 creates source with producer name appended" do
     assert "com:test:my_app:orders" == Event.source("orders")
   end
+
+  test "with_bare_type/1 removes domain and version" do
+    assert %Event{type: "user.created"} =
+             Event.new(type: "com.test.user.created.v1") |> Event.with_bare_type()
+  end
 end

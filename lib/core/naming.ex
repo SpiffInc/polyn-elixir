@@ -57,7 +57,7 @@ defmodule Polyn.Naming do
       iex>Polyn.Naming.version_suffix("com.acme.user.created.", 2)
       "com.acme.user.created.v2"
   """
-  @spec version_suffix(str :: binary(), version :: non_negative_integer()) :: binary()
+  @spec version_suffix(str :: binary(), version :: non_neg_integer()) :: binary()
   @spec version_suffix(str :: binary()) :: binary()
   def version_suffix(str, version \\ 1) do
     "#{str}v#{version}"
