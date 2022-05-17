@@ -67,7 +67,6 @@ defmodule Polyn.Serializers.JSON do
 
       schema ->
         validate_schema(errors, schema, json)
-        |> IO.inspect(label: "event spec errors")
     end
   end
 
@@ -87,7 +86,6 @@ defmodule Polyn.Serializers.JSON do
     case get_dataschema(json["type"], json["dataschema"]) do
       {:ok, schema} ->
         validate_schema(errors, Jason.decode!(schema), json["data"])
-        |> IO.inspect(label: "data spec errors")
 
       {:error, _reason} ->
         add_error(errors, "Polyn could not find dataschema #{json["dataschema"]}")
