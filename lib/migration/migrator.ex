@@ -1,7 +1,6 @@
 defmodule Polyn.Migrator do
   @moduledoc false
   require Logger
-  import Polyn.Migration.Utils, only: [migrations_dir: 0]
   alias Jetstream.API.Stream
   alias Polyn.Serializers.JSON
 
@@ -234,6 +233,10 @@ defmodule Polyn.Migrator do
 
   defp connection_config do
     Application.fetch_env!(:polyn, :nats)
+  end
+
+  def migrations_dir do
+    Path.join(file().cwd!(), "/priv/polyn/migrations")
   end
 
   defp file do

@@ -2,20 +2,31 @@ defmodule Polyn.MigrationGenerator do
   @moduledoc false
 
   require Mix.Generator
-  import Polyn.Migration.Utils, only: [migrations_dir: 0]
 
-  def run([name]) do
-    create_directory()
-    validate_uniqueness(name)
-    generate_file(name)
+  def run(args) do
+    args = parse_args(args)
+    create_directory(args)
+    validate_uniqueness(args)
+    generate_file(args)
   end
 
-  defp create_directory do
-    file().mkdir_p!(migrations_dir())
+  defp parse_args(args) do
+    %{
+      name: Enum.at(args, 0),
+      dir: Enum.at(args, 1, migrations_dir())
+    }
   end
 
-  defp validate_uniqueness(name) do
-    fuzzy_path = Path.join(migrations_dir(), "*_#{base_name(name)}")
+  def migrations_dir do
+    Path.join(File.cwd!(), "/priv/polyn/migrations")
+  end
+
+  defp create_directory(%{dir: dir}) do
+    File.mkdir_p!(dir)
+  end
+
+  defp validate_uniqueness(%{dir: dir, name: name}) do
+    fuzzy_path = Path.join(dir, "*_#{base_name(name)}")
 
     if Path.wildcard(fuzzy_path) != [] do
       Mix.raise(
@@ -24,8 +35,8 @@ defmodule Polyn.MigrationGenerator do
     end
   end
 
-  defp file_path(name) do
-    Path.join(migrations_dir(), file_name(name))
+  defp file_path(%{dir: dir, name: name}) do
+    Path.join(dir, file_name(name))
   end
 
   defp file_name(name) do
@@ -45,13 +56,11 @@ defmodule Polyn.MigrationGenerator do
   defp pad(i) when i < 10, do: <<?0, ?0 + i>>
   defp pad(i), do: to_string(i)
 
-  defp file do
-    Application.get_env(:polyn, :file, File)
-  end
-
-  defp generate_file(name) do
+  defp generate_file(%{name: name} = args) do
+    file = file_path(args)
     assigns = [mod: migration_module_name(name)]
-    Mix.Generator.create_file(file_path(name), migration_template(assigns))
+    Mix.Generator.create_file(file, migration_template(assigns))
+    file
   end
 
   defp migration_module_name(name) do
