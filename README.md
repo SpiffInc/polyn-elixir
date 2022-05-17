@@ -85,6 +85,33 @@ priv/
 
 ## Server Migrations
 
+Polyn allows any component using the central NATS server to make configure changes to it through a migration system. The migration system is designed to give individual system components autonomy while keeping a predictable and consistent messaging system.
+
+### Creating Migrations
+
+To create a migration you use the mix task `mix polyn.gen.migration <name>`. If you wanted to create a new stream for user messages you could do the following:
+
+```bash
+mix polyn.gen.migration create_user_stream
+```
+
+This would add a new migration to your codebase at `priv/polyn/migrations/<timestamp>_create_user_stream.exs`. The TIMESTAMP is a unique number that identifies the migration. It is usually the timestamp of when the migration was created. The NAME must also be unique and it quickly identifies what the migration does. Inside the generated file you would see a module like this:
+
+```elixir
+defmodule Polyn.Migrations.CreateUserStream do
+  import Polyn.Migration
+
+  def change do
+  end
+end
+```
+
+Inside the `change` function you can use the functions available in `Polyn.Migration` to update the NATS server. You can then run `mix polyn.migrate` to apply your changes.
+
+### Preventing Conflicts
+
+Because any component in a Polyn system is able to make changes to the NATS server, we have to ensure that migrations don't clobber each other. Every Polyn migration adds a message to a stream called `POLYN_MIGRATIONS` that is ordered by the timestamp the migration was created, the command to execute, and the `source` of the message. These migration messages use the same conventions as other Polyn messages using `CloudEvents` and `JSONSchema` to keep them consistent.
+
 ## Event and Data Serialization
 
 ### `datacontenttype`
