@@ -16,8 +16,11 @@ defmodule Polyn.Migration do
 
   @spec create_stream(stream_options :: map()) :: :ok
   def create_stream(options) when is_map(options) do
+    # Pick up defaults from Stream structs to help make event valid
+    data = struct(Stream, options) |> Map.from_struct()
     command_num = LocalRunner.get_running_migration_command_num(runner()) + 1
     migration_id = LocalRunner.get_running_migration_id(runner())
+    type = Event.type("polyn.stream.create", version: 1)
 
     event =
       Event.new(
@@ -25,13 +28,13 @@ defmodule Polyn.Migration do
         # It's ok if the event version changes because old
         # migrations won't be run again in production if the IDs
         # are the same
-        type: Event.type("polyn.stream.create", version: 1),
+        type: type,
         specversion: "1.0.1",
         # We don't want the consuming application's domain in the polyn
         # dataschemas since they will be the same in every app
-        dataschema: Event.dataschema("polyn.stream.create", version: 1),
+        dataschema: Naming.trim_domain_prefix(type),
         source: Event.source(),
-        data: options
+        data: data
       )
 
     LocalRunner.add_application_migration(runner(), event)

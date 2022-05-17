@@ -16,6 +16,7 @@ defmodule Polyn.Migrator do
 
   require Logger
   alias Jetstream.API.Stream
+  alias Polyn.Serializers.JSON
 
   @migration_stream "POLYN_MIGRATIONS"
   @migration_subject "POLYN_MIGRATIONS.all"
@@ -104,6 +105,7 @@ defmodule Polyn.Migrator do
     |> fetch_production_migrations()
     |> fetch_already_run_migrations()
     |> read_application_migrations()
+    |> run_migrations()
   end
 
   defp init_state(opts) do
@@ -190,15 +192,36 @@ defmodule Polyn.Migrator do
     end)
   end
 
+  # Get the events produced by each migration file
   defp execute_migration_modules(modules, state) do
     {:ok, pid} = LocalRunner.start_link(state)
     Process.put(:polyn_local_migration_runner, pid)
 
     Enum.each(modules, fn {module, id} ->
-      LocalRunner.update_running_migration_id(id)
-      LocalRunner.update_running_migration_command_num(0)
+      LocalRunner.update_running_migration_id(pid, id)
+      LocalRunner.update_running_migration_command_num(pid, 0)
       module.change()
     end)
+
+    LocalRunner.update_running_migration_id(pid, nil)
+    LocalRunner.update_running_migration_command_num(pid, nil)
+    state = LocalRunner.get_state(pid)
+
+    LocalRunner.stop(pid)
+    state
+  end
+
+  defp run_migrations(state) do
+    Enum.each(state.application_migrations, fn event ->
+      serialized_event = JSON.serialize(event)
+      Gnat.pub(connection_name(), @migration_subject, serialized_event)
+      execute_migration_event(Polyn.Event.with_bare_type(event))
+    end)
+  end
+
+  defp execute_migration_event(%{type: "polyn.stream.create"} = event) do
+    stream = struct(Stream, event.data)
+    Stream.create(connection_name, stream)
   end
 
   defp connection_name do
