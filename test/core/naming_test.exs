@@ -39,4 +39,14 @@ defmodule Polyn.NamingTest do
     assert Naming.version_suffix("com:acme:user:created:", 2) ==
              "com:acme:user:created:v2"
   end
+
+  describe "trim_version_suffix/1" do
+    test "with dots" do
+      assert Naming.trim_version_suffix("com.acme.user.created.v1") == "com.acme.user.created"
+    end
+
+    test "with colons" do
+      assert Naming.trim_version_suffix("com:acme:user:created:v1") == "com:acme:user:created"
+    end
+  end
 end
