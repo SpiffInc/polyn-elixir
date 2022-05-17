@@ -1,10 +1,10 @@
 defmodule Polyn.MigratorTest do
   use ExUnit.Case, async: true
 
+  alias Jetstream.API.Stream
   alias Polyn.CodeMock
   alias Polyn.FileMock
   alias Polyn.Migrator
-  alias Jetstream.API.Stream
 
   import Mox
 
@@ -49,7 +49,7 @@ defmodule Polyn.MigratorTest do
     defmodule ExampleCreateStream do
       import Polyn.Migration
 
-      def change() do
+      def change do
         create_stream(name: "test_stream", subjects: ["test_subject"])
       end
     end

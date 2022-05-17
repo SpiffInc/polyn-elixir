@@ -21,4 +21,6 @@ defmodule Polyn.FileStub do
   def write!(_path, content) do
     content
   end
+
+  def ls(_path), do: {:ok, []}
 end

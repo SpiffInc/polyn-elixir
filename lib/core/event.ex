@@ -137,7 +137,7 @@ defmodule Polyn.Event do
       "com:my_app:orders"
   """
   @spec source() :: binary()
-  def source() do
+  def source do
     Naming.dot_to_colon("#{domain()}:#{source_root()}")
   end
 
