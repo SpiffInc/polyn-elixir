@@ -74,7 +74,9 @@ defmodule Polyn.MigratorTest do
     Stream.delete(connection_name(), "test_stream")
   end
 
-  test "local migrations ignore non .exs files" do
+  test "local migrations ignore non .exs files", %{tmp_dir: tmp_dir} do
+    File.write!(Path.join(tmp_dir, "foo.text"), "foo")
+    assert Migrator.run(["my_auth_token", tmp_dir]) == :ok
   end
 
   test "local migrations in correct order" do

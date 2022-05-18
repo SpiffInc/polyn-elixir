@@ -112,6 +112,8 @@ defmodule Polyn.Migrator do
     |> fetch_already_run_migrations()
     |> read_application_migrations()
     |> run_migrations()
+
+    :ok
   end
 
   defp init_state(opts) do
