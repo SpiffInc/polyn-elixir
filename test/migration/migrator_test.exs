@@ -5,14 +5,10 @@ defmodule Polyn.MigratorTest do
   alias Polyn.Migrator
   import ExUnit.CaptureLog
 
-  import Mox
-  alias Polyn.FileMock
-
   @moduletag :tmp_dir
 
   @migration_stream "POLYN_MIGRATIONS"
   @migration_subject "POLYN_MIGRATIONS.all"
-  @migration_events_dir "priv/migration_events"
 
   setup do
     on_exit(fn ->
@@ -52,11 +48,6 @@ defmodule Polyn.MigratorTest do
 
     add_migration_file(tmp_dir, "1234_create_stream.exs", migration)
 
-    expect_schema_read(
-      "polyn.stream.create.v1",
-      "polyn.stream.create.v1.schema.v1.json"
-    )
-
     Migrator.run(["my_auth_token", tmp_dir])
 
     assert {:ok, %{data: data}} =
@@ -90,14 +81,6 @@ defmodule Polyn.MigratorTest do
 
   defp add_migration_file(dir, file_name, contents) do
     File.write!(Path.join(dir, file_name), contents)
-  end
-
-  defp expect_schema_read(event, schema_file) do
-    path = Application.app_dir(:polyn, [@migration_events_dir, event, schema_file])
-
-    expect(FileMock, :read, fn ^path ->
-      {:ok, File.read!(path)}
-    end)
   end
 
   defp connection_name do

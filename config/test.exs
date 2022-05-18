@@ -1,6 +1,5 @@
 import Config
 
-config :polyn, :file, Polyn.FileMock
 config :polyn, :domain, "com.test"
 
 config :polyn, :source_root, "my_app"

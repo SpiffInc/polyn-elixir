@@ -12,8 +12,8 @@ defmodule Polyn.Serializers.JSON do
   Raises an error if json is not valid
   """
   @spec deserialize(json :: binary()) :: Polyn.Event.t()
-  def deserialize(json) do
-    Jason.decode!(json) |> validate() |> to_event()
+  def deserialize(json, opts \\ []) do
+    Jason.decode!(json) |> validate(Keyword.get(opts, :dataschemas_dir)) |> to_event()
   end
 
   defp to_event(json) do
@@ -35,11 +35,11 @@ defmodule Polyn.Serializers.JSON do
   Raises an error if event is not valid
   """
   @spec serialize(event :: Polyn.Event.t()) :: String.t()
-  def serialize(event) do
+  def serialize(event, opts \\ []) do
     Map.from_struct(event)
     |> stringify_keys()
     |> add_datacontenttype()
-    |> validate()
+    |> validate(Keyword.get(opts, :dataschemas_dir))
     |> Jason.encode!()
   end
 
@@ -54,9 +54,9 @@ defmodule Polyn.Serializers.JSON do
 
   defp add_datacontenttype(json), do: json
 
-  defp validate(json) do
+  defp validate(json, dataschemas_dir) do
     validate_event_schema([], json)
-    |> validate_dataschema(json)
+    |> validate_dataschema(json, dataschemas_dir)
     |> handle_errors(json)
   end
 
@@ -74,16 +74,17 @@ defmodule Polyn.Serializers.JSON do
     Polyn.CloudEvent.json_schema_for_version(version)
   end
 
-  defp validate_dataschema(errors, json) when is_map_key(json, "dataschema") == false do
-    validate_dataschema(errors, Map.put(json, "dataschema", nil))
+  defp validate_dataschema(errors, json, dataschemas_dir)
+       when is_map_key(json, "dataschema") == false do
+    validate_dataschema(errors, Map.put(json, "dataschema", nil), dataschemas_dir)
   end
 
-  defp validate_dataschema(errors, %{"dataschema" => nil}) do
+  defp validate_dataschema(errors, %{"dataschema" => nil}, _dataschemas_dir) do
     add_error(errors, "Missing dataschema. Every Polyn event must have a dataschema")
   end
 
-  defp validate_dataschema(errors, json) do
-    case get_dataschema(json["type"], json["dataschema"]) do
+  defp validate_dataschema(errors, json, dataschemas_dir) do
+    case get_dataschema(json["type"], json["dataschema"], dataschemas_dir) do
       {:ok, schema} ->
         validate_schema(errors, Jason.decode!(schema), json["data"])
 
@@ -92,19 +93,23 @@ defmodule Polyn.Serializers.JSON do
     end
   end
 
-  defp get_dataschema(event_type, dataschema) do
+  defp get_dataschema(event_type, dataschema, dir) do
     event_type = Naming.trim_domain_prefix(event_type)
     dataschema = Naming.colon_to_dot(dataschema <> ".json") |> Naming.trim_domain_prefix()
 
-    file().read(Path.join(dataschema_dir(event_type), dataschema))
+    dataschema_dir(event_type, dir) |> Path.join(dataschema) |> File.read()
   end
 
-  defp dataschema_dir("polyn" <> _suffix = event_type) do
+  defp dataschema_dir("polyn" <> _suffix = event_type, _dataschemas_dir) do
     Application.app_dir(:polyn, ["priv", "migration_events", event_type])
   end
 
-  defp dataschema_dir(event_type) do
-    Path.join([file().cwd!(), @user_schemas_dir, event_type])
+  defp dataschema_dir(event_type, nil) do
+    Path.join([File.cwd!(), @user_schemas_dir, event_type])
+  end
+
+  defp dataschema_dir(event_type, dataschemas_dir) do
+    Path.join(dataschemas_dir, event_type)
   end
 
   defp validate_schema(errors, schema, json) do
@@ -134,9 +139,5 @@ defmodule Polyn.Serializers.JSON do
 
   defp add_error(errors, error) do
     [error | errors]
-  end
-
-  defp file do
-    Application.get_env(:polyn, :file, File)
   end
 end
