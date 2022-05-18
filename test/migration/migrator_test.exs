@@ -2,17 +2,16 @@ defmodule Polyn.MigratorTest do
   use ExUnit.Case, async: true
 
   alias Jetstream.API.Stream
-  alias Polyn.CodeMock
-  alias Polyn.FileMock
   alias Polyn.Migrator
 
   import Mox
+  alias Polyn.FileMock
+
+  @moduletag :tmp_dir
 
   @migration_stream "POLYN_MIGRATIONS"
   @migration_subject "POLYN_MIGRATIONS.all"
   @migration_events_dir "priv/migration_events"
-
-  setup :verify_on_exit!
 
   setup do
     on_exit(fn ->
@@ -20,32 +19,27 @@ defmodule Polyn.MigratorTest do
     end)
   end
 
-  test "creates migration stream if not there" do
-    expect_cwd!("my_app")
-    expect_ls("my_app", [])
-
+  test "creates migration stream if not there", %{tmp_dir: tmp_dir} do
     Stream.delete(connection_name(), @migration_stream)
-    Migrator.run("foo")
+    Migrator.run(["foo", tmp_dir])
     assert {:ok, info} = Stream.info(connection_name(), @migration_stream)
     assert info.config.name == @migration_stream
   end
 
-  test "ignores migration stream if already existing" do
-    expect_cwd!("my_app")
-    expect_ls("my_app", [])
-
+  test "ignores migration stream if already existing", %{tmp_dir: tmp_dir} do
     {:ok, _stream} =
       Stream.create(connection_name(), %Stream{
         name: @migration_stream,
         subjects: [@migration_subject]
       })
 
-    Migrator.run("foo")
+    Migrator.run(["foo", tmp_dir])
     assert {:ok, info} = Stream.info(connection_name(), @migration_stream)
     assert info.config.name == @migration_stream
   end
 
-  test "adds a migration to create a new stream" do
+  test "adds a migration to create a new stream", %{tmp_dir: tmp_dir} do
+    migration = """
     defmodule ExampleCreateStream do
       import Polyn.Migration
 
@@ -53,17 +47,16 @@ defmodule Polyn.MigratorTest do
         create_stream(name: "test_stream", subjects: ["test_subject"])
       end
     end
+    """
 
-    expect_cwd!("my_app", 2)
-    expect_ls("my_app", ["1234_create_stream.exs"])
-    expect_compile_file("my_app", "1234_create_stream.exs", [ExampleCreateStream])
+    add_migration_file(tmp_dir, "1234_create_stream.exs", migration)
 
     expect_schema_read(
       "polyn.stream.create.v1",
       "polyn.stream.create.v1.schema.v1.json"
     )
 
-    Migrator.run("my_auth_token")
+    Migrator.run(["my_auth_token", tmp_dir])
 
     assert {:ok, %{data: data}} =
              Stream.get_message(connection_name(), @migration_stream, %{
@@ -89,26 +82,8 @@ defmodule Polyn.MigratorTest do
   test "logs when no local migrations found" do
   end
 
-  defp expect_ls(cwd, files) do
-    path = "#{cwd}/priv/polyn/migrations"
-    expect(FileMock, :ls, fn ^path -> {:ok, files} end)
-  end
-
-  defp expect_error_ls(cwd) do
-    path = "#{cwd}/priv/polyn/migrations"
-    expect(FileMock, :ls, fn ^path -> {:error, :enoent} end)
-  end
-
-  defp expect_cwd!(cwd, n \\ 1) do
-    expect(FileMock, :cwd!, n, fn -> cwd end)
-  end
-
-  defp expect_compile_file(cwd, file, modules) do
-    path = "#{cwd}/priv/polyn/migrations/#{file}"
-
-    expect(CodeMock, :compile_file, fn ^path ->
-      Enum.map(modules, fn module -> {module, "foo"} end)
-    end)
+  defp add_migration_file(dir, file_name, contents) do
+    File.write!(Path.join(dir, file_name), contents)
   end
 
   defp expect_schema_read(event, schema_file) do

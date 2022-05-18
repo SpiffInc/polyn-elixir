@@ -6,7 +6,7 @@ defmodule Mix.Tasks.Polyn.Migrate do
 
   use Mix.Task
 
-  def run(_) do
-    Polyn.Migrator.run("foo")
+  def run(args) do
+    Polyn.Migrator.run(args)
   end
 end

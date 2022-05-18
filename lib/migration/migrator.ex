@@ -12,6 +12,7 @@ defmodule Polyn.Migrator do
     @moduledoc false
 
     @typedoc """
+    * `:migrations_dir` - Location of migration files
     * `:running_migration_id` - The timestamp/id of the migration file being run. Taken from the beginning of the file name
     * `:running_migration_command_num` - The number of the command being run in the migration module
     * `:config_service_auth_token` - The auth token to access a production API endpoint containing production migration events
@@ -21,6 +22,7 @@ defmodule Polyn.Migrator do
     """
 
     @type t :: %__MODULE__{
+            migrations_dir: binary(),
             running_migration_id: non_neg_integer() | nil,
             running_migration_command_num: non_neg_integer() | nil,
             config_service_auth_token: binary(),
@@ -35,6 +37,7 @@ defmodule Polyn.Migrator do
       :running_migration_command_num,
       :config_service_auth_token,
       :migration_stream_info,
+      :migrations_dir,
       already_run_migrations: [],
       production_migrations: [],
       application_migrations: []
@@ -101,8 +104,8 @@ defmodule Polyn.Migrator do
     defexception [:message]
   end
 
-  def run(config_service_auth_token) do
-    init_state(config_service_auth_token: config_service_auth_token)
+  def run(args) do
+    init_state(args)
     |> fetch_migration_stream_info()
     |> create_migration_stream()
     |> fetch_production_migrations()
@@ -112,7 +115,12 @@ defmodule Polyn.Migrator do
   end
 
   defp init_state(opts) do
-    struct!(State, opts)
+    opts = %{
+      config_service_auth_token: Enum.at(opts, 0),
+      migrations_dir: Enum.at(opts, 1, migrations_dir())
+    }
+
+    State.new(opts)
   end
 
   # We'll keep all migrations on a JetStream Stream so that we can
@@ -170,20 +178,20 @@ defmodule Polyn.Migrator do
 
   # Migrations that the application using Polyn owns
   defp read_application_migrations(state) do
-    local_migration_files()
-    |> compile_migration_files()
+    local_migration_files(state)
+    |> compile_migration_files(state)
     |> execute_migration_modules(state)
   end
 
-  defp local_migration_files do
-    case file().ls(migrations_dir()) do
+  defp local_migration_files(%{migrations_dir: migrations_dir}) do
+    case File.ls(migrations_dir) do
       {:ok, files} ->
         files
         |> Enum.filter(&is_elixir_script?/1)
         |> Enum.sort_by(&extract_migration_id/1)
 
       {:error, _reason} ->
-        Logger.info("No migrations found at #{migrations_dir()}")
+        Logger.info("No migrations found at #{migrations_dir}")
         []
     end
   end
@@ -197,10 +205,10 @@ defmodule Polyn.Migrator do
     String.to_integer(id)
   end
 
-  defp compile_migration_files(files) do
+  defp compile_migration_files(files, %{migrations_dir: migrations_dir}) do
     Enum.map(files, fn file_name ->
       id = extract_migration_id(file_name)
-      [{module, _content}] = code().compile_file(Path.join(migrations_dir(), file_name))
+      [{module, _content}] = Code.compile_file(Path.join(migrations_dir, file_name))
       {module, id}
     end)
   end
@@ -246,14 +254,6 @@ defmodule Polyn.Migrator do
   end
 
   def migrations_dir do
-    Path.join(file().cwd!(), "/priv/polyn/migrations")
-  end
-
-  defp file do
-    Application.get_env(:polyn, :file, File)
-  end
-
-  defp code do
-    Application.get_env(:polyn, :code, Code)
+    Path.join(File.cwd!(), "/priv/polyn/migrations")
   end
 end
