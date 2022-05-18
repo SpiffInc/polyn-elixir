@@ -16,6 +16,7 @@ defmodule Polyn.MigratorTest do
     end)
   end
 
+  @tag capture_log: true
   test "creates migration stream if not there", %{tmp_dir: tmp_dir} do
     Stream.delete(connection_name(), @migration_stream)
     Migrator.run(["foo", tmp_dir])
@@ -23,6 +24,7 @@ defmodule Polyn.MigratorTest do
     assert info.config.name == @migration_stream
   end
 
+  @tag capture_log: true
   test "ignores migration stream if already existing", %{tmp_dir: tmp_dir} do
     {:ok, _stream} =
       Stream.create(connection_name(), %Stream{
@@ -36,7 +38,7 @@ defmodule Polyn.MigratorTest do
   end
 
   test "adds a migration to create a new stream", %{tmp_dir: tmp_dir} do
-    migration = """
+    add_migration_file(tmp_dir, "1234_create_stream.exs", """
     defmodule ExampleCreateStream do
       import Polyn.Migration
 
@@ -44,9 +46,7 @@ defmodule Polyn.MigratorTest do
         create_stream(name: "test_stream", subjects: ["test_subject"])
       end
     end
-    """
-
-    add_migration_file(tmp_dir, "1234_create_stream.exs", migration)
+    """)
 
     Migrator.run(["my_auth_token", tmp_dir])
 
@@ -70,7 +70,41 @@ defmodule Polyn.MigratorTest do
     assert Migrator.run(["my_auth_token", tmp_dir]) == :ok
   end
 
-  test "local migrations in correct order" do
+  test "local migrations in correct order", %{tmp_dir: tmp_dir} do
+    add_migration_file(tmp_dir, "222_create_stream.exs", """
+    defmodule ExampleSecondStream do
+      import Polyn.Migration
+
+      def change do
+        create_stream(name: "second_stream", subjects: ["second_subject"])
+      end
+    end
+    """)
+
+    add_migration_file(tmp_dir, "111_create_other_stream.exs", """
+    defmodule ExampleFirstStream do
+      import Polyn.Migration
+
+      def change do
+        create_stream(name: "first_stream", subjects: ["first_subject"])
+      end
+    end
+    """)
+
+    Migrator.run(["my_auth_token", tmp_dir])
+
+    assert {:ok, %{data: first_migration}} =
+             Stream.get_message(connection_name(), @migration_stream, %{
+               seq: 1
+             })
+
+    assert {:ok, %{data: second_migration}} =
+             Stream.get_message(connection_name(), @migration_stream, %{
+               seq: 2
+             })
+
+    assert Jason.decode!(first_migration)["data"]["name"] == "first_stream"
+    assert Jason.decode!(second_migration)["data"]["name"] == "second_stream"
   end
 
   test "logs when no local migrations found", %{tmp_dir: tmp_dir} do
