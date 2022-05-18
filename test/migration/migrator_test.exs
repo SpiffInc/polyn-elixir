@@ -3,6 +3,7 @@ defmodule Polyn.MigratorTest do
 
   alias Jetstream.API.Stream
   alias Polyn.Migrator
+  import ExUnit.CaptureLog
 
   import Mox
   alias Polyn.FileMock
@@ -79,7 +80,10 @@ defmodule Polyn.MigratorTest do
   test "local migrations in correct order" do
   end
 
-  test "logs when no local migrations found" do
+  test "logs when no local migrations found", %{tmp_dir: tmp_dir} do
+    assert capture_log(fn ->
+             Migrator.run(["my_auth_token", tmp_dir])
+           end) =~ "No migrations found at #{tmp_dir}"
   end
 
   defp add_migration_file(dir, file_name, contents) do

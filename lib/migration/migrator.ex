@@ -185,6 +185,10 @@ defmodule Polyn.Migrator do
 
   defp local_migration_files(%{migrations_dir: migrations_dir}) do
     case File.ls(migrations_dir) do
+      {:ok, []} ->
+        Logger.info("No migrations found at #{migrations_dir}")
+        []
+
       {:ok, files} ->
         files
         |> Enum.filter(&is_elixir_script?/1)
