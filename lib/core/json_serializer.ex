@@ -5,6 +5,7 @@ defmodule Polyn.Serializers.JSON do
   """
 
   alias Polyn.Event
+  alias Polyn.Naming
   alias Polyn.SchemaStore
 
   @doc """
@@ -62,10 +63,12 @@ defmodule Polyn.Serializers.JSON do
   end
 
   defp get_schema(json, opts) do
-    case SchemaStore.get(json["type"], name: store_name(opts)) do
+    type = Polyn.Naming.trim_domain_prefix(json["type"])
+
+    case SchemaStore.get(type, name: store_name(opts)) do
       nil ->
         raise Polyn.SchemaException,
-              "Schema for #{json["type"]} does not exist. Make sure it's " <>
+              "Schema for #{type} does not exist. Make sure it's " <>
                 "been added to your `events` codebase and has been loaded into the schema store on your NATS " <>
                 "server"
 

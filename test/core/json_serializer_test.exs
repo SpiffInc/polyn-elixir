@@ -28,7 +28,7 @@ defmodule Polyn.Serializers.JSONTest do
         %{
           id: "foo",
           specversion: "1.0.1",
-          type: "user.created.v1",
+          type: Event.full_type("user.created.v1"),
           source: "test",
           time: now,
           data: nil
@@ -39,7 +39,7 @@ defmodule Polyn.Serializers.JSONTest do
       assert %Event{
                id: "foo",
                specversion: "1.0.1",
-               type: "user.created.v1",
+               type: "com.test.user.created.v1",
                source: "test",
                time: ^now,
                data: nil
@@ -60,7 +60,7 @@ defmodule Polyn.Serializers.JSONTest do
         %{
           id: "foo",
           specversion: "1.0.1",
-          type: "user.created.v1",
+          type: Event.full_type("user.created.v1"),
           source: "test",
           time: now,
           data: %{foo: "bar"}
@@ -71,7 +71,7 @@ defmodule Polyn.Serializers.JSONTest do
       assert %Event{
                id: "foo",
                specversion: "1.0.1",
-               type: "user.created.v1",
+               type: "com.test.user.created.v1",
                source: "test",
                time: ^now,
                data: %{"foo" => "bar"}
@@ -83,7 +83,7 @@ defmodule Polyn.Serializers.JSONTest do
         %{
           id: "foo",
           specversion: "1.0.1",
-          type: "user.created.v1",
+          type: Event.full_type("user.created.v1"),
           source: "test",
           data: %{foo: "bar"}
         }
@@ -109,7 +109,7 @@ defmodule Polyn.Serializers.JSONTest do
           %{
             id: "foo",
             specversion: "1.0.1",
-            type: "user.created.v1",
+            type: Event.full_type("user.created.v1"),
             source: "test",
             time: now,
             data: %{foo: "bar"}
@@ -137,7 +137,7 @@ defmodule Polyn.Serializers.JSONTest do
       json =
         Event.new(
           specversion: "1.0.1",
-          type: "user.created.v1",
+          type: Event.full_type("user.created.v1"),
           source: "test",
           time: now
         )
@@ -146,7 +146,7 @@ defmodule Polyn.Serializers.JSONTest do
 
       assert %{
                "specversion" => "1.0.1",
-               "type" => "user.created.v1",
+               "type" => "com.test.user.created.v1",
                "source" => "test",
                "time" => ^now,
                "polyntrace" => [],
@@ -173,7 +173,7 @@ defmodule Polyn.Serializers.JSONTest do
       json =
         Event.new(
           specversion: "1.0.1",
-          type: "user.created.v1",
+          type: Event.full_type("user.created.v1"),
           source: "test",
           data: %{"foo" => "bar"}
         )
@@ -259,7 +259,7 @@ defmodule Polyn.Serializers.JSONTest do
           Event.new(
             id: "abc",
             specversion: "1.0.1",
-            type: "user.created.v1",
+            type: Event.full_type("user.created.v1"),
             source: "test",
             data: nil
           )
