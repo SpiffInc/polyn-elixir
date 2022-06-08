@@ -7,6 +7,25 @@ defmodule Polyn.Producer do
   alias Polyn.Event
   alias Polyn.Serializers.JSON
 
+  @type pub_options :: {:store_name, binary()} | {:source, binary()}
+
+  @doc """
+  Publish an event to the message bus. Will validate the data against an existing schema
+  added by Polyn CLI.
+
+  ## Options
+
+  * `source` - The `source` of the event. By default will be the `domain` combined with the
+  `source_root`
+
+  ## Examples
+
+      iex>Polyn.Producer.pub("user.created.v1", %{name: "Mary"})
+      :ok
+      iex>Polyn.Producer.pub("user.created.v1", %{name: "Mary"}, source: "admin")
+      :ok
+  """
+  @spec pub(event_type :: binary(), data :: any(), opts :: list(pub_options())) :: :ok
   def pub(event_type, data, opts \\ []) do
     event =
       Event.new(
