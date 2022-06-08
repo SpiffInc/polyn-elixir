@@ -2,6 +2,9 @@ defmodule Polyn.Event do
   @moduledoc """
   The Event structure used throughout Polyn.
   """
+
+  alias Polyn.Naming
+
   defstruct id: nil,
             specversion: nil,
             type: nil,
@@ -57,5 +60,30 @@ defmodule Polyn.Event do
   @spec new(fields :: map()) :: t()
   def new(fields) when is_map(fields) do
     Enum.into(fields, Keyword.new()) |> new()
+  end
+
+  @doc """
+  Get the Event `source` prefixed with reverse domain name
+  """
+  @spec full_source(source :: binary()) :: binary()
+  def full_source(source) do
+    case Naming.validate_source_name(source) do
+      :ok ->
+        Naming.dot_to_colon(domain()) <> ":" <> Naming.dot_to_colon(source)
+
+      {:error, reason} ->
+        raise Polyn.ValidationException, reason
+    end
+  end
+
+  @doc """
+  Get the Event `type` prefixed with reverse domain name
+  """
+  def full_type(type) do
+    "#{domain()}.#{type}"
+  end
+
+  defp domain do
+    Application.fetch_env!(:polyn, :domain)
   end
 end
