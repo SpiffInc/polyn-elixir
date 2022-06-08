@@ -75,8 +75,10 @@ defmodule Polyn.Event do
   @doc """
   Get the Event `source` prefixed with reverse domain name
   """
-  @spec full_source(source :: binary()) :: binary()
+  @spec full_source(source :: binary() | nil) :: binary()
   @spec full_source() :: binary()
+  def full_source(nil), do: full_source()
+
   def full_source(source) do
     case Naming.validate_source_name(source) do
       :ok ->

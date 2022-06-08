@@ -40,4 +40,8 @@ defmodule Polyn.EventTest do
   test "full_source/1 creates source with producer name appended" do
     assert "com:test:user:backend:orders" == Event.full_source("orders")
   end
+
+  test "full_source/1 uses root if nil" do
+    assert "com:test:user:backend" == Event.full_source(nil)
+  end
 end
