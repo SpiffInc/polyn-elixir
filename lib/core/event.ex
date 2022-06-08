@@ -16,8 +16,7 @@ defmodule Polyn.Event do
             polyntrace: [],
             polynclient: %{
               lang: "elixir",
-              langversion: System.build_info().version,
-              version: Polyn.MixProject.version()
+              langversion: System.build_info().version
             }
 
   @typedoc """
@@ -53,8 +52,10 @@ defmodule Polyn.Event do
     fields =
       Keyword.put_new(fields, :id, UUID.uuid4())
       |> Keyword.put_new(:time, DateTime.to_iso8601(DateTime.utc_now()))
+      |> Keyword.put_new(:source, full_source())
 
     struct!(__MODULE__, fields)
+    |> add_polyn_version()
   end
 
   @spec new(fields :: map()) :: t()
@@ -62,14 +63,34 @@ defmodule Polyn.Event do
     Enum.into(fields, Keyword.new()) |> new()
   end
 
+  defp add_polyn_version(%__MODULE__{} = event) do
+    put_in(event, [Access.key!(:polynclient), :version], polyn_version())
+  end
+
+  defp polyn_version do
+    # Interporalating cuz `vsn` comes out as charlist instead of String
+    "#{Application.spec(:polyn, :vsn)}"
+  end
+
   @doc """
   Get the Event `source` prefixed with reverse domain name
   """
   @spec full_source(source :: binary()) :: binary()
+  @spec full_source() :: binary()
   def full_source(source) do
     case Naming.validate_source_name(source) do
       :ok ->
-        Naming.dot_to_colon(domain()) <> ":" <> Naming.dot_to_colon(source)
+        full_source() <> ":" <> source
+
+      {:error, reason} ->
+        raise Polyn.ValidationException, reason
+    end
+  end
+
+  def full_source() do
+    case Naming.validate_source_name(source_root()) do
+      :ok ->
+        Naming.dot_to_colon("#{domain()}:#{source_root()}")
 
       {:error, reason} ->
         raise Polyn.ValidationException, reason
@@ -79,11 +100,17 @@ defmodule Polyn.Event do
   @doc """
   Get the Event `type` prefixed with reverse domain name
   """
+  @spec full_type(type :: binary()) :: binary()
   def full_type(type) do
     "#{domain()}.#{type}"
   end
 
+  # The `domain` that all events will happen under
   defp domain do
     Application.fetch_env!(:polyn, :domain)
+  end
+
+  defp source_root do
+    Application.fetch_env!(:polyn, :source_root)
   end
 end

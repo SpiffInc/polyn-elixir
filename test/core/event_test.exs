@@ -15,37 +15,29 @@ defmodule Polyn.EventTest do
 
   test "new/1 adds source if none provided" do
     assert %Event{source: source} = Event.new([])
-    assert source == "com:test:my_app"
+    assert source == "com:test:user:backend"
   end
 
-  test "type/2 creates an event with v1 by default" do
-    assert "com.test.user.created.v1" == Event.type("user.created")
+  test "new/1 adds polyn_version" do
+    assert %Event{polynclient: %{version: version}} = Event.new([])
+    assert version == "#{Application.spec(:polyn, :vsn)}"
   end
 
-  test "type/2 creates an event with a version" do
-    assert "com.test.user.created.v2" == Event.type("user.created", version: 2)
+  test "full_type/1 prefixes domain" do
+    assert "com.test.user.created.v1" == Event.full_type("user.created.v1")
   end
 
-  test "dataschema/2 creates dataschema URI v1 by default" do
-    assert "com:test:user:created:v1:schema:v1" ==
-             Event.type("user.created") |> Event.dataschema()
+  test "full_source/0 creates source with domain and source_root" do
+    assert "com:test:user:backend" == Event.full_source()
   end
 
-  test "dataschema/2 creates dataschema URI with other version" do
-    assert "com:test:user:created:v1:schema:v2" ==
-             Event.type("user.created") |> Event.dataschema(version: 2)
+  test "full_source/1 raises if invalid name" do
+    assert_raise(Polyn.ValidationException, fn ->
+      assert "com:test:user:backend:orders" == Event.full_source("*orders*")
+    end)
   end
 
-  test "source/0 creates source with domain and source_root" do
-    assert "com:test:my_app" == Event.source()
-  end
-
-  test "source/1 creates source with producer name appended" do
-    assert "com:test:my_app:orders" == Event.source("orders")
-  end
-
-  test "with_bare_type/1 removes domain and version" do
-    assert %Event{type: "user.created"} =
-             Event.new(type: "com.test.user.created.v1") |> Event.with_bare_type()
+  test "full_source/1 creates source with producer name appended" do
+    assert "com:test:user:backend:orders" == Event.full_source("orders")
   end
 end
