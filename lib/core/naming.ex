@@ -99,12 +99,27 @@ defmodule Polyn.Naming do
     end
   end
 
+  @doc """
+  Validate the source of an event
+
+  ## Examples
+
+      iex>Polyn.Naming.validate_source_name("user.created")
+      :ok
+
+      iex>Polyn.Naming.validate_source_name("user:created")
+      :ok
+
+      iex>Polyn.Naming.validate_source_name("user  created")
+      {:error, ["Source names can't have spaces"]}
+  """
   @spec validate_source_name(name :: binary()) :: :ok | {:error, binary()}
   def validate_source_name(name) do
     if String.match?(name, ~r/^[a-z0-9]+(?:(?:\.|\:)[a-z0-9]+)?$/) do
       :ok
     else
-      {:error, "Event source must be lowercase, alphanumeric and dot/colon separated"}
+      {:error,
+       "Event source must be lowercase, alphanumeric and dot/colon separated, got #{name}"}
     end
   end
 

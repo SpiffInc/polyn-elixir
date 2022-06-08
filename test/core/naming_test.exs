@@ -97,42 +97,46 @@ defmodule Polyn.NamingTest do
 
     test "source can't have spaces" do
       assert Naming.validate_source_name("user   created") ==
-               {:error, "Event source must be lowercase, alphanumeric and dot/colon separated"}
+               {:error, source_error("user   created")}
     end
 
     test "source can't have tabs" do
       assert Naming.validate_source_name("user\tcreated") ==
-               {:error, "Event source must be lowercase, alphanumeric and dot/colon separated"}
+               {:error, source_error("user\tcreated")}
     end
 
     test "source can't have linebreaks" do
       assert Naming.validate_source_name("user\n\rcreated") ==
-               {:error, "Event source must be lowercase, alphanumeric and dot/colon separated"}
+               {:error, source_error("user\n\rcreated")}
     end
 
     test "source can't have special characters" do
       assert Naming.validate_source_name("user:*%[]<>$!@#-_created") ==
-               {:error, "Event source must be lowercase, alphanumeric and dot/colon separated"}
+               {:error, source_error("user:*%[]<>$!@#-_created")}
     end
 
     test "source can't start with a dot" do
       assert Naming.validate_source_name(".user") ==
-               {:error, "Event source must be lowercase, alphanumeric and dot/colon separated"}
+               {:error, source_error(".user")}
     end
 
     test "source can't end with a dot" do
       assert Naming.validate_source_name("user.") ==
-               {:error, "Event source must be lowercase, alphanumeric and dot/colon separated"}
+               {:error, source_error("user.")}
     end
 
     test "source can't start with a colon" do
       assert Naming.validate_source_name(":user") ==
-               {:error, "Event source must be lowercase, alphanumeric and dot/colon separated"}
+               {:error, source_error(":user")}
     end
 
     test "source can't end with a colon" do
       assert Naming.validate_source_name("user:") ==
-               {:error, "Event source must be lowercase, alphanumeric and dot/colon separated"}
+               {:error, source_error("user:")}
     end
+  end
+
+  defp source_error(source) do
+    "Event source must be lowercase, alphanumeric and dot/colon separated, got #{source}"
   end
 end
