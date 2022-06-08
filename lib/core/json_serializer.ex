@@ -4,13 +4,16 @@ defmodule Polyn.Serializers.JSON do
   inconsistencies are found
   """
 
+  alias Polyn.Event
+  alias Polyn.SchemaStore
+
   @doc """
   Convert a JSON payload into a Polyn.Event struct
   Raises an error if json is not valid
   """
   @spec deserialize(json :: binary()) :: Polyn.Event.t()
-  def deserialize(json) do
-    Jason.decode!(json) |> validate() |> to_event()
+  def deserialize(json, opts \\ []) do
+    Jason.decode!(json) |> validate(opts) |> to_event()
   end
 
   defp to_event(json) do
@@ -32,13 +35,13 @@ defmodule Polyn.Serializers.JSON do
   Raises an error if event is not valid
   """
   @spec serialize(event :: Polyn.Event.t()) :: String.t()
-  def serialize(event) do
+  def serialize(%Event{} = event, opts \\ []) do
     Map.from_struct(event)
     |> Enum.reduce(%{}, fn field, acc ->
       serialize_field(acc, field)
     end)
     |> add_datacontenttype()
-    |> validate()
+    |> validate(opts)
     |> Jason.encode!()
   end
 
@@ -52,73 +55,41 @@ defmodule Polyn.Serializers.JSON do
 
   defp add_datacontenttype(json), do: json
 
-  defp validate(json) do
-    validate_event_schema([], json)
-    |> validate_dataschema(json)
+  defp validate(json, opts) do
+    get_schema(json, opts)
+    |> validate_schema(json)
     |> handle_errors(json)
   end
 
-  defp validate_event_schema(errors, json) do
-    case get_cloud_event_schema(json["specversion"]) do
-      {:error, _message} ->
-        add_error(errors, "Polyn does not recognize specversion #{json["specversion"]}")
+  defp get_schema(json, opts) do
+    case SchemaStore.get(json["type"], name: store_name(opts)) do
+      nil ->
+        raise Polyn.SchemaException,
+              "Schema for #{json["type"]} does not exist. Make sure it's " <>
+                "been added to your `events` codebase and has been loaded into the schema store on your NATS " <>
+                "server"
 
       schema ->
-        validate_schema(errors, schema, json)
+        ExJsonSchema.Schema.resolve(schema)
     end
   end
 
-  defp get_cloud_event_schema(version) do
-    Polyn.CloudEvent.json_schema_for_version(version)
-  end
-
-  defp validate_dataschema(errors, json) when is_map_key(json, "dataschema") == false do
-    validate_dataschema(errors, Map.put(json, "dataschema", nil))
-  end
-
-  defp validate_dataschema(errors, %{"dataschema" => nil}) do
-    add_error(errors, "Missing dataschema. Every Polyn event must have a dataschema")
-  end
-
-  defp validate_dataschema(errors, json) do
-    case get_dataschema(json["type"], json["dataschema"]) do
-      {:ok, schema} ->
-        validate_schema(errors, Jason.decode!(schema), json["data"])
-
-      {:error, _reason} ->
-        add_error(errors, "Polyn could not find dataschema #{json["dataschema"]}")
-    end
-  end
-
-  defp get_dataschema(event_type, dataschema) do
-    dataschema = String.replace(dataschema, ":", ".") <> ".json"
-
-    file().read(Path.join(dataschema_dir(), "#{event_type}/#{dataschema}"))
-  end
-
-  defp dataschema_dir do
-    Path.join(file().cwd!(), "/priv/polyn/schemas")
-  end
-
-  defp validate_schema(errors, schema, json) do
-    schema = ExJsonSchema.Schema.resolve(schema)
-
+  defp validate_schema(schema, json) do
     case ExJsonSchema.Validator.validate(schema, json) do
       :ok ->
-        errors
+        []
 
       {:error, json_errors} ->
         Enum.map(json_errors, fn {message, property_path} ->
           "Property: `#{property_path}` - #{message}"
         end)
-        |> Enum.concat(errors)
     end
   end
 
   defp handle_errors([], json), do: json
 
   defp handle_errors(errors, json) do
-    errors = add_error(errors, "Polyn event #{json["id"]} is not valid")
+    errors = add_error(errors, "Polyn event #{json["id"]} from #{json["source"]} is not valid")
     errors = errors ++ ["Event data: #{inspect(json)}"]
     errors = Enum.join(errors, "\n")
     raise Polyn.ValidationException, errors
@@ -128,7 +99,7 @@ defmodule Polyn.Serializers.JSON do
     [error | errors]
   end
 
-  defp file do
-    Application.get_env(:polyn, :file, File)
+  defp store_name(opts) do
+    Keyword.get(opts, :store_name, SchemaStore.store_name())
   end
 end
