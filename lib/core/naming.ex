@@ -99,6 +99,15 @@ defmodule Polyn.Naming do
     end
   end
 
+  @spec validate_source_name(name :: binary()) :: :ok | {:error, binary()}
+  def validate_source_name(name) do
+    if String.match?(name, ~r/^[a-z0-9]+(?:(?:\.|\:)[a-z0-9]+)?$/) do
+      :ok
+    else
+      {:error, "Event source must be lowercase, alphanumeric and dot/colon separated"}
+    end
+  end
+
   defp domain do
     Application.fetch_env!(:polyn, :domain)
   end
