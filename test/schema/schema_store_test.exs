@@ -116,18 +116,18 @@ defmodule Polyn.SchemaStoreTest do
              ) == nil
     end
 
-    test "raises if different kind of error" do
+    test "raises if store not found" do
       SchemaStore.delete_store(name: @store_name)
 
-      assert_raise(
-        Polyn.SchemaException,
-        inspect(%{"code" => 404, "description" => "stream not found", "err_code" => 10059}),
-        fn ->
-          SchemaStore.get("foo.bar",
-            name: @store_name
-          )
-        end
-      )
+      %{message: message} =
+        assert_raise(
+          Polyn.SchemaException,
+          fn ->
+            SchemaStore.get("foo.bar", name: @store_name)
+          end
+        )
+
+      assert message =~ "The Schema Store has not been setup on your NATS server"
     end
   end
 

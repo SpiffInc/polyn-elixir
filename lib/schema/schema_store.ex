@@ -54,10 +54,22 @@ defmodule Polyn.SchemaStore do
   @spec get(type :: binary(), opts :: keyword()) :: nil | map()
   def get(type, opts \\ []) do
     case KV.get_value(Connection.name(), store_name(opts), type) do
-      {:error, %{"description" => "no message found"}} -> nil
-      {:error, reason} -> raise Polyn.SchemaException, inspect(reason)
-      nil -> nil
-      schema -> Jason.decode!(schema)
+      {:error, %{"description" => "no message found"}} ->
+        nil
+
+      {:error, %{"description" => "stream not found"}} ->
+        raise Polyn.SchemaException,
+              "The Schema Store has not been setup on your NATS server. " <>
+                "Make sure you use the Polyn CLI to create it"
+
+      {:error, reason} ->
+        raise Polyn.SchemaException, inspect(reason)
+
+      nil ->
+        nil
+
+      schema ->
+        Jason.decode!(schema)
     end
   end
 
