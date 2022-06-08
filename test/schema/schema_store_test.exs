@@ -1,6 +1,7 @@
 defmodule Polyn.SchemaStoreTest do
   use ExUnit.Case, async: true
 
+  alias Jetstream.API.KV
   alias Polyn.SchemaStore
 
   @store_name "POLYN_SCHEMAS_SCHEMA_STORE_TEST"
@@ -24,7 +25,7 @@ defmodule Polyn.SchemaStoreTest do
     end
 
     test "handles when store already exists with different config" do
-      Jetstream.API.KV.create_bucket(Polyn.Connection.name(), @store_name, description: "foo")
+      KV.create_bucket(Polyn.Connection.name(), @store_name, description: "foo")
       assert :ok = SchemaStore.create_store(name: @store_name)
     end
   end

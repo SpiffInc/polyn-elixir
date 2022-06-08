@@ -1,10 +1,5 @@
 defmodule Polyn.SchemaStore do
   # Persisting and interacting with persisted schemas
-  # TODO: Cache all schemas in a genserver (Pull consumer??).
-  # optimization could be to look for only the events we want to
-  # process. We don't need to do anything when new schemas are added
-  # since we expecting the current version of the application's code
-  # to be built with only certain schemas in mind
   @moduledoc false
 
   alias Jetstream.API.KV
@@ -27,8 +22,9 @@ defmodule Polyn.SchemaStore do
     ExJsonSchema.Schema.resolve(schema)
   rescue
     ExJsonSchema.Schema.InvalidSchemaError ->
-      raise Polyn.SchemaException,
-            "Schemas must be valid JSONSchema documents, got #{inspect(schema)}"
+      reraise Polyn.SchemaException,
+              [message: "Schemas must be valid JSONSchema documents, got #{inspect(schema)}"],
+              __STACKTRACE__
   end
 
   defp encode(schema) do

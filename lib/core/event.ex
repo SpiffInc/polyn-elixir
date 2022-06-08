@@ -89,7 +89,7 @@ defmodule Polyn.Event do
     end
   end
 
-  def full_source() do
+  def full_source do
     case Naming.validate_source_name(source_root()) do
       :ok ->
         Naming.dot_to_colon("#{domain()}:#{source_root()}")
