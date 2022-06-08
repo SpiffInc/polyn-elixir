@@ -104,7 +104,7 @@ defmodule Polyn.Event do
   """
   @spec full_type(type :: binary()) :: binary()
   def full_type(type) do
-    "#{domain()}.#{type}"
+    "#{domain()}.#{Naming.trim_domain_prefix(type)}"
   end
 
   # The `domain` that all events will happen under

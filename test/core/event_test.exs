@@ -27,6 +27,10 @@ defmodule Polyn.EventTest do
     assert "com.test.user.created.v1" == Event.full_type("user.created.v1")
   end
 
+  test "full_type/1 ignores existing domain prefix" do
+    assert "com.test.user.created.v1" == Event.full_type("com.test.user.created.v1")
+  end
+
   test "full_source/0 creates source with domain and source_root" do
     assert "com:test:user:backend" == Event.full_source()
   end
