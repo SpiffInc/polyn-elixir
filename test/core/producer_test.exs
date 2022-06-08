@@ -57,6 +57,19 @@ defmodule Polyn.ProducerTest do
     end
   end
 
+  test "pub/3 raises if doesn't match schema" do
+    add_schema("user.created.v1", %{
+      "type" => "object",
+      "properties" => %{"data" => %{"type" => "string"}}
+    })
+
+    Gnat.sub(Connection.name(), self(), "user.created.v1")
+
+    assert_raise(Polyn.ValidationException, fn ->
+      Producer.pub("user.created.v1", 100, store_name: @store_name, source: "orders")
+    end)
+  end
+
   defp add_schema(type, schema) do
     SchemaStore.save(type, schema, name: @store_name)
   end
