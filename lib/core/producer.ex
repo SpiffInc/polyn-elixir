@@ -15,8 +15,10 @@ defmodule Polyn.Producer do
 
   ## Options
 
-  * `source` - The `source` of the event. By default will be the `domain` combined with the
+  * `:source` - The `source` of the event. By default will be the `domain` combined with the
   `source_root`
+  * `:triggered_by` - The event that triggered this one. Will use information from the event to build
+  up the `polyntrace` data
 
   ## Examples
 
@@ -33,10 +35,23 @@ defmodule Polyn.Producer do
         data: data,
         specversion: "1.0.1",
         source: Event.full_source(Keyword.get(opts, :source)),
-        datacontenttype: "application/json"
+        datacontenttype: "application/json",
+        polyntrace: build_polyntrace(Keyword.get(opts, :triggered_by))
       )
       |> JSON.serialize(opts)
 
     Gnat.pub(Connection.name(), event_type, event)
+  end
+
+  defp build_polyntrace(nil), do: []
+
+  defp build_polyntrace(%Event{} = triggered_by) do
+    Enum.concat(triggered_by.polyntrace, [
+      %{
+        id: triggered_by.id,
+        type: triggered_by.type,
+        time: triggered_by.time
+      }
+    ])
   end
 end

@@ -19,6 +19,12 @@ defmodule Polyn.Event do
               langversion: System.build_info().version
             }
 
+  @type polyntrace :: %{
+          type: binary(),
+          time: binary(),
+          id: binary()
+        }
+
   @typedoc """
   `id` - Identifies the event.
   `specversion` - The version of the CloudEvents specification which the event uses.
@@ -40,7 +46,7 @@ defmodule Polyn.Event do
           datacontenttype: String.t(),
           source: String.t(),
           time: String.t(),
-          polyntrace: list(map()),
+          polyntrace: list(polyntrace()),
           polynclient: map()
         }
 
@@ -50,8 +56,8 @@ defmodule Polyn.Event do
   @spec new(fields :: keyword()) :: t()
   def new(fields) when is_list(fields) do
     fields =
-      Keyword.put_new(fields, :id, UUID.uuid4())
-      |> Keyword.put_new(:time, DateTime.to_iso8601(DateTime.utc_now()))
+      Keyword.put_new(fields, :id, new_event_id())
+      |> Keyword.put_new(:time, new_timestamp())
       |> Keyword.put_new(:source, full_source())
 
     struct!(__MODULE__, fields)
@@ -61,6 +67,20 @@ defmodule Polyn.Event do
   @spec new(fields :: map()) :: t()
   def new(fields) when is_map(fields) do
     Enum.into(fields, Keyword.new()) |> new()
+  end
+
+  @doc """
+  Generate a new event id
+  """
+  def new_event_id do
+    UUID.uuid4()
+  end
+
+  @doc """
+  Generate a new timestamp for the event
+  """
+  def new_timestamp do
+    DateTime.to_iso8601(DateTime.utc_now())
   end
 
   defp add_polyn_version(%__MODULE__{} = event) do
