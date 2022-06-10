@@ -11,11 +11,11 @@ defmodule Polyn.SchemaStore do
   Persist a schema. In prod/dev schemas should have already been persisted via
   the Polyn CLI.
   """
-  @spec save(type :: binary(), schema :: map()) :: :ok
-  @spec save(type :: binary(), schema :: map(), opts :: keyword()) :: :ok
-  def save(type, schema, opts \\ []) when is_map(schema) do
+  @spec save(conn :: Gnat.t(), type :: binary(), schema :: map()) :: :ok
+  @spec save(conn :: Gnat.t(), type :: binary(), schema :: map(), opts :: keyword()) :: :ok
+  def save(conn, type, schema, opts \\ []) when is_map(schema) do
     is_json_schema?(schema)
-    KV.create_key(Connection.name(), store_name(opts), type, encode(schema))
+    KV.create_key(conn, store_name(opts), type, encode(schema))
   end
 
   defp is_json_schema?(schema) do
@@ -37,19 +37,19 @@ defmodule Polyn.SchemaStore do
   @doc """
   Remove a schema
   """
-  @spec delete(type :: binary()) :: :ok
-  @spec delete(type :: binary(), opts :: keyword()) :: :ok
-  def delete(type, opts \\ []) do
-    KV.purge_key(Connection.name(), store_name(opts), type)
+  @spec delete(conn :: Gnat.t(), type :: binary()) :: :ok
+  @spec delete(conn :: Gnat.t(), type :: binary(), opts :: keyword()) :: :ok
+  def delete(conn, type, opts \\ []) do
+    KV.purge_key(conn, store_name(opts), type)
   end
 
   @doc """
   Get the schema for an event
   """
-  @spec get(type :: binary()) :: nil | map()
-  @spec get(type :: binary(), opts :: keyword()) :: nil | map()
-  def get(type, opts \\ []) do
-    case KV.get_value(Connection.name(), store_name(opts), type) do
+  @spec get(conn :: Gnat.t(), type :: binary()) :: nil | map()
+  @spec get(conn :: Gnat.t(), type :: binary(), opts :: keyword()) :: nil | map()
+  def get(conn, type, opts \\ []) do
+    case KV.get_value(conn, store_name(opts), type) do
       {:error, %{"description" => "no message found"}} ->
         nil
 
@@ -73,11 +73,11 @@ defmodule Polyn.SchemaStore do
   Create the schema store if it doesn't exist already. In prod/dev the the store
   creation should have already been done via the Polyn CLI
   """
-  @spec create_store() :: :ok
-  @spec create_store(opts :: keyword()) :: :ok
-  def create_store(opts \\ []) do
+  @spec create_store(conn :: Gnat.t()) :: :ok
+  @spec create_store(conn :: Gnat.t(), opts :: keyword()) :: :ok
+  def create_store(conn, opts \\ []) do
     result =
-      KV.create_bucket(Connection.name(), store_name(opts),
+      KV.create_bucket(conn, store_name(opts),
         description: "Contains Schemas for all events on the server"
       )
 
@@ -93,10 +93,10 @@ defmodule Polyn.SchemaStore do
   @doc """
   Delete the schema store. Useful for test
   """
-  @spec delete_store() :: :ok
-  @spec delete_store(opts :: keyword()) :: :ok
-  def delete_store(opts \\ []) do
-    KV.delete_bucket(Connection.name(), store_name(opts))
+  @spec delete_store(conn :: Gnat.t()) :: :ok
+  @spec delete_store(conn :: Gnat.t(), opts :: keyword()) :: :ok
+  def delete_store(conn, opts \\ []) do
+    KV.delete_bucket(conn, store_name(opts))
   end
 
   @doc """
