@@ -1,19 +1,16 @@
 defmodule Polyn.ProducerTest do
-  use ExUnit.Case, async: true
+  use Polyn.ConnCase, async: true
 
-  alias Polyn.Connection
   alias Polyn.Event
   alias Polyn.Producer
   alias Polyn.SchemaStore
 
+  @moduletag with_gnat: :gnat
+
   @store_name "PRODUCER_TEST_SCHEMA_STORE"
 
   setup do
-    SchemaStore.create_store(name: @store_name)
-
-    on_exit(fn ->
-      SchemaStore.delete_store(name: @store_name)
-    end)
+    SchemaStore.create_store(:gnat, name: @store_name)
   end
 
   test "pub/3 adds a new event to the server" do
@@ -22,8 +19,8 @@ defmodule Polyn.ProducerTest do
       "properties" => %{"data" => %{"type" => "string"}}
     })
 
-    Gnat.sub(Connection.name(), self(), "user.created.v1")
-    Producer.pub("user.created.v1", "foo", store_name: @store_name)
+    Gnat.sub(:gnat, self(), "user.created.v1")
+    Producer.pub(:gnat, "user.created.v1", "foo", store_name: @store_name)
 
     data = get_message()
     assert data["data"] == "foo"
@@ -32,6 +29,8 @@ defmodule Polyn.ProducerTest do
     assert data["specversion"] == "1.0.1"
     assert data["type"] == "com.test.user.created.v1"
     assert data["polyntrace"] == []
+
+    delete_store()
   end
 
   test "pub/3 can include extra `source` info" do
@@ -40,11 +39,13 @@ defmodule Polyn.ProducerTest do
       "properties" => %{"data" => %{"type" => "string"}}
     })
 
-    Gnat.sub(Connection.name(), self(), "user.created.v1")
-    Producer.pub("user.created.v1", "foo", store_name: @store_name, source: "orders")
+    Gnat.sub(:gnat, self(), "user.created.v1")
+    Producer.pub(:gnat, "user.created.v1", "foo", store_name: @store_name, source: "orders")
 
     data = get_message()
     assert data["source"] == "com:test:user:backend:orders"
+
+    delete_store()
   end
 
   test "pub/3 builds up polyntrace if :triggered_by is supplied" do
@@ -53,7 +54,7 @@ defmodule Polyn.ProducerTest do
       "properties" => %{"data" => %{"type" => "string"}}
     })
 
-    Gnat.sub(Connection.name(), self(), "user.created.v1")
+    Gnat.sub(:gnat, self(), "user.created.v1")
 
     trigger_event =
       Event.new(
@@ -67,7 +68,7 @@ defmodule Polyn.ProducerTest do
         ]
       )
 
-    Producer.pub("user.created.v1", "foo",
+    Producer.pub(:gnat, "user.created.v1", "foo",
       store_name: @store_name,
       triggered_by: trigger_event
     )
@@ -82,6 +83,8 @@ defmodule Polyn.ProducerTest do
                "type" => trigger_event.type
              }
            ]
+
+    delete_store()
   end
 
   test "pub/3 raises if doesn't match schema" do
@@ -90,15 +93,15 @@ defmodule Polyn.ProducerTest do
       "properties" => %{"data" => %{"type" => "string"}}
     })
 
-    Gnat.sub(Connection.name(), self(), "user.created.v1")
-
     assert_raise(Polyn.ValidationException, fn ->
-      Producer.pub("user.created.v1", 100, store_name: @store_name, source: "orders")
+      Producer.pub(:gnat, "user.created.v1", 100, store_name: @store_name, source: "orders")
     end)
+
+    delete_store()
   end
 
   defp add_schema(type, schema) do
-    SchemaStore.save(type, schema, name: @store_name)
+    SchemaStore.save(:gnat, type, schema, name: @store_name)
   end
 
   defp get_message do
@@ -109,5 +112,9 @@ defmodule Polyn.ProducerTest do
       100 ->
         raise "no message"
     end
+  end
+
+  defp delete_store do
+    SchemaStore.delete_store(:gnat, name: @store_name)
   end
 end

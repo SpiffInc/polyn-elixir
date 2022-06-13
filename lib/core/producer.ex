@@ -3,7 +3,6 @@ defmodule Polyn.Producer do
   Use `Polyn.Producer` to publish new events to the NATS server
   """
 
-  alias Polyn.Connection
   alias Polyn.Event
   alias Polyn.Serializers.JSON
 
@@ -22,13 +21,14 @@ defmodule Polyn.Producer do
 
   ## Examples
 
-      iex>Polyn.Producer.pub("user.created.v1", %{name: "Mary"})
+      iex>Polyn.Producer.pub(:gnat, "user.created.v1", %{name: "Mary"})
       :ok
-      iex>Polyn.Producer.pub("user.created.v1", %{name: "Mary"}, source: "admin")
+      iex>Polyn.Producer.pub(:gnat, "user.created.v1", %{name: "Mary"}, source: "admin")
       :ok
   """
-  @spec pub(event_type :: binary(), data :: any(), opts :: list(pub_options())) :: :ok
-  def pub(event_type, data, opts \\ []) do
+  @spec pub(conn :: Gnat.t(), event_type :: binary(), data :: any(), opts :: list(pub_options())) ::
+          :ok
+  def pub(conn, event_type, data, opts \\ []) do
     event =
       Event.new(
         type: Event.full_type(event_type),
@@ -38,9 +38,9 @@ defmodule Polyn.Producer do
         datacontenttype: "application/json",
         polyntrace: build_polyntrace(Keyword.get(opts, :triggered_by))
       )
-      |> JSON.serialize(opts)
+      |> JSON.serialize(conn, opts)
 
-    Gnat.pub(Connection.name(), event_type, event)
+    Gnat.pub(conn, event_type, event)
   end
 
   defp build_polyntrace(nil), do: []
