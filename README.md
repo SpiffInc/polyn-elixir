@@ -54,21 +54,6 @@ The [Cloud Event Spec](https://github.com/cloudevents/spec/blob/v1.0.2/cloudeven
 config :polyn, :source_root, "orders.payments"
 ```
 
-### Connection
-
-You will need to provide the connection settings for your NATS connection. This will differ in-between environments.
-
-```elixir
-config :polyn, :nats, %{
-  name: :gnat, # (required) the registered named you want to give the Gnat connection
-  backoff_period: 4_000, # number of milliseconds to wait between consecutive reconnect attempts (default: 2_000)
-  connection_settings: [
-    %{host: "10.0.0.100", port: 4222},
-    %{host: "10.0.0.101", port: 4222},
-  ]
-}
-```
-
 ## Event and Data Serialization
 
 Each Producer and Consumer can define what kind of serializer to use for the event. By default they
