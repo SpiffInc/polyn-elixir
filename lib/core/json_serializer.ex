@@ -5,16 +5,15 @@ defmodule Polyn.Serializers.JSON do
   """
 
   alias Polyn.Event
-  alias Polyn.Naming
   alias Polyn.SchemaStore
 
   @doc """
   Convert a JSON payload into a Polyn.Event struct
   Raises an error if json is not valid
   """
-  @spec deserialize(json :: binary()) :: Polyn.Event.t()
-  def deserialize(json, opts \\ []) do
-    Jason.decode!(json) |> validate(opts) |> to_event()
+  @spec deserialize(json :: binary(), conn :: Gnat.t()) :: Polyn.Event.t()
+  def deserialize(json, conn, opts \\ []) do
+    Jason.decode!(json) |> validate(conn, opts) |> to_event()
   end
 
   defp to_event(json) do
@@ -35,14 +34,14 @@ defmodule Polyn.Serializers.JSON do
   Convert a Polyn.Event struct into a JSON paylod.
   Raises an error if event is not valid
   """
-  @spec serialize(event :: Polyn.Event.t()) :: String.t()
-  def serialize(%Event{} = event, opts \\ []) do
+  @spec serialize(event :: Polyn.Event.t(), conn :: Gnat.t()) :: String.t()
+  def serialize(%Event{} = event, conn, opts \\ []) do
     Map.from_struct(event)
     |> Enum.reduce(%{}, fn field, acc ->
       serialize_field(acc, field)
     end)
     |> add_datacontenttype()
-    |> validate(opts)
+    |> validate(conn, opts)
     |> Jason.encode!()
   end
 
@@ -56,16 +55,16 @@ defmodule Polyn.Serializers.JSON do
 
   defp add_datacontenttype(json), do: json
 
-  defp validate(json, opts) do
-    get_schema(json, opts)
+  defp validate(json, conn, opts) do
+    get_schema(conn, json, opts)
     |> validate_schema(json)
     |> handle_errors(json)
   end
 
-  defp get_schema(json, opts) do
+  defp get_schema(conn, json, opts) do
     type = Polyn.Naming.trim_domain_prefix(json["type"])
 
-    case SchemaStore.get(type, name: store_name(opts)) do
+    case SchemaStore.get(conn, type, name: store_name(opts)) do
       nil ->
         raise Polyn.SchemaException,
               "Schema for #{type} does not exist. Make sure it's " <>
