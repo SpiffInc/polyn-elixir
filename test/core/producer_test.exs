@@ -5,12 +5,13 @@ defmodule Polyn.ProducerTest do
   alias Polyn.Producer
   alias Polyn.SchemaStore
 
-  @moduletag with_gnat: :gnat
+  @conn_name :producer_gnat
+  @moduletag with_gnat: @conn_name
 
   @store_name "PRODUCER_TEST_SCHEMA_STORE"
 
   setup do
-    SchemaStore.create_store(:gnat, name: @store_name)
+    SchemaStore.create_store(@conn_name, name: @store_name)
   end
 
   test "pub/3 adds a new event to the server" do
@@ -19,8 +20,8 @@ defmodule Polyn.ProducerTest do
       "properties" => %{"data" => %{"type" => "string"}}
     })
 
-    Gnat.sub(:gnat, self(), "user.created.v1")
-    Producer.pub(:gnat, "user.created.v1", "foo", store_name: @store_name)
+    Gnat.sub(@conn_name, self(), "user.created.v1")
+    Producer.pub(@conn_name, "user.created.v1", "foo", store_name: @store_name)
 
     data = get_message()
     assert data["data"] == "foo"
@@ -39,8 +40,8 @@ defmodule Polyn.ProducerTest do
       "properties" => %{"data" => %{"type" => "string"}}
     })
 
-    Gnat.sub(:gnat, self(), "user.created.v1")
-    Producer.pub(:gnat, "user.created.v1", "foo", store_name: @store_name, source: "orders")
+    Gnat.sub(@conn_name, self(), "user.created.v1")
+    Producer.pub(@conn_name, "user.created.v1", "foo", store_name: @store_name, source: "orders")
 
     data = get_message()
     assert data["source"] == "com:test:user:backend:orders"
@@ -54,7 +55,7 @@ defmodule Polyn.ProducerTest do
       "properties" => %{"data" => %{"type" => "string"}}
     })
 
-    Gnat.sub(:gnat, self(), "user.created.v1")
+    Gnat.sub(@conn_name, self(), "user.created.v1")
 
     trigger_event =
       Event.new(
@@ -68,7 +69,7 @@ defmodule Polyn.ProducerTest do
         ]
       )
 
-    Producer.pub(:gnat, "user.created.v1", "foo",
+    Producer.pub(@conn_name, "user.created.v1", "foo",
       store_name: @store_name,
       triggered_by: trigger_event
     )
@@ -94,14 +95,14 @@ defmodule Polyn.ProducerTest do
     })
 
     assert_raise(Polyn.ValidationException, fn ->
-      Producer.pub(:gnat, "user.created.v1", 100, store_name: @store_name, source: "orders")
+      Producer.pub(@conn_name, "user.created.v1", 100, store_name: @store_name, source: "orders")
     end)
 
     delete_store()
   end
 
   defp add_schema(type, schema) do
-    SchemaStore.save(:gnat, type, schema, name: @store_name)
+    SchemaStore.save(@conn_name, type, schema, name: @store_name)
   end
 
   defp get_message do
@@ -115,6 +116,6 @@ defmodule Polyn.ProducerTest do
   end
 
   defp delete_store do
-    SchemaStore.delete_store(:gnat, name: @store_name)
+    SchemaStore.delete_store(@conn_name, name: @store_name)
   end
 end

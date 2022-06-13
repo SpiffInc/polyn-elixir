@@ -5,12 +5,13 @@ defmodule Polyn.Serializers.JSONTest do
   alias Polyn.SchemaStore
   alias Polyn.Serializers.JSON
 
-  @moduletag with_gnat: :gnat
+  @conn_name :json_serializer_gnat
+  @moduletag with_gnat: @conn_name
 
   @store_name "JSON_SERIALIZER_TEST_SCHEMA_STORE"
 
   setup do
-    SchemaStore.create_store(:gnat, name: @store_name)
+    SchemaStore.create_store(@conn_name, name: @store_name)
   end
 
   describe "deserialize/1" do
@@ -32,7 +33,7 @@ defmodule Polyn.Serializers.JSONTest do
           data: nil
         }
         |> Jason.encode!()
-        |> JSON.deserialize(:gnat, store_name: @store_name)
+        |> JSON.deserialize(@conn_name, store_name: @store_name)
 
       assert %Event{
                id: "foo",
@@ -66,7 +67,7 @@ defmodule Polyn.Serializers.JSONTest do
           data: %{foo: "bar"}
         }
         |> Jason.encode!()
-        |> JSON.deserialize(:gnat, store_name: @store_name)
+        |> JSON.deserialize(@conn_name, store_name: @store_name)
 
       assert %Event{
                id: "foo",
@@ -92,7 +93,7 @@ defmodule Polyn.Serializers.JSONTest do
         |> Jason.encode!()
 
       assert_raise(Polyn.SchemaException, fn ->
-        JSON.deserialize(json, :gnat, store_name: @store_name)
+        JSON.deserialize(json, @conn_name, store_name: @store_name)
       end)
 
       delete_store()
@@ -119,7 +120,7 @@ defmodule Polyn.Serializers.JSONTest do
             data: %{foo: "bar"}
           }
           |> Jason.encode!()
-          |> JSON.deserialize(:gnat, store_name: @store_name)
+          |> JSON.deserialize(@conn_name, store_name: @store_name)
         end)
 
       assert message =~ "Polyn event foo from test is not valid"
@@ -147,7 +148,7 @@ defmodule Polyn.Serializers.JSONTest do
           source: "test",
           time: now
         )
-        |> JSON.serialize(:gnat, store_name: @store_name)
+        |> JSON.serialize(@conn_name, store_name: @store_name)
         |> Jason.decode!()
 
       assert %{
@@ -185,7 +186,7 @@ defmodule Polyn.Serializers.JSONTest do
           source: "test",
           data: %{"foo" => "bar"}
         )
-        |> JSON.serialize(:gnat, store_name: @store_name)
+        |> JSON.serialize(@conn_name, store_name: @store_name)
         |> Jason.decode!()
 
       assert json["data"] == %{"foo" => "bar"}
@@ -207,7 +208,7 @@ defmodule Polyn.Serializers.JSONTest do
           datacontenttype: "application/xml",
           data: "<much wow=\"xml\"/>"
         )
-        |> JSON.serialize(:gnat, store_name: @store_name)
+        |> JSON.serialize(@conn_name, store_name: @store_name)
         |> Jason.decode!()
 
       assert json["data"] == "<much wow=\"xml\"/>"
@@ -226,7 +227,7 @@ defmodule Polyn.Serializers.JSONTest do
 
       %{message: message} =
         assert_raise(Polyn.SchemaException, fn ->
-          JSON.serialize(event, :gnat, store_name: @store_name)
+          JSON.serialize(event, @conn_name, store_name: @store_name)
         end)
 
       assert message =~ "Schema for user.created.v1 does not exist"
@@ -251,7 +252,7 @@ defmodule Polyn.Serializers.JSONTest do
             source: "test",
             data: "foo"
           )
-          |> JSON.serialize(:gnat, store_name: @store_name)
+          |> JSON.serialize(@conn_name, store_name: @store_name)
         end)
 
       assert message =~ "Property: `#/id` - Type mismatch. Expected String but got Null."
@@ -275,7 +276,7 @@ defmodule Polyn.Serializers.JSONTest do
             source: "test",
             data: nil
           )
-          |> JSON.serialize(:gnat, store_name: @store_name)
+          |> JSON.serialize(@conn_name, store_name: @store_name)
         end)
 
       assert message =~ "Polyn event abc from test is not valid"
@@ -285,10 +286,10 @@ defmodule Polyn.Serializers.JSONTest do
   end
 
   defp add_schema(type, schema) do
-    SchemaStore.save(:gnat, type, schema, name: @store_name)
+    SchemaStore.save(@conn_name, type, schema, name: @store_name)
   end
 
   defp delete_store do
-    SchemaStore.delete_store(:gnat, name: @store_name)
+    SchemaStore.delete_store(@conn_name, name: @store_name)
   end
 end
