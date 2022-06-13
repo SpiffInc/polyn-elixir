@@ -128,6 +128,15 @@ defmodule Polyn.Serializers.JSONTest do
 
       delete_store()
     end
+
+    test "error if payload is not decodeable" do
+      %{message: message} =
+        assert_raise(Polyn.ValidationException, fn ->
+          JSON.deserialize("foo", @conn_name, store_name: @store_name)
+        end)
+
+      assert message =~ "Polyn was unable to decode the following message: \nfoo"
+    end
   end
 
   describe "serialize/1" do

@@ -13,7 +13,17 @@ defmodule Polyn.Serializers.JSON do
   """
   @spec deserialize(json :: binary(), conn :: Gnat.t()) :: Polyn.Event.t()
   def deserialize(json, conn, opts \\ []) do
-    Jason.decode!(json) |> validate(conn, opts) |> to_event()
+    case Jason.decode(json) do
+      {:ok, data} ->
+        validate(data, conn, opts) |> to_event()
+
+      {:error, error} ->
+        raise Polyn.ValidationException,
+              "Polyn was unable to decode the following message: \n" <>
+                "#{error.data} \n There were errors at position #{error.position}. \n " <>
+                "Please ensure your message structure conforms to the CloudEvent schema and that your " <>
+                "message data follows a JSON Schema registered using Polyn CLI."
+    end
   end
 
   defp to_event(json) do
