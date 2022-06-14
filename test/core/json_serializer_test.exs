@@ -23,7 +23,7 @@ defmodule Polyn.Serializers.JSONTest do
 
       now = NaiveDateTime.utc_now() |> NaiveDateTime.to_iso8601()
 
-      event =
+      {:ok, event} =
         %{
           id: "foo",
           specversion: "1.0.1",
@@ -57,7 +57,7 @@ defmodule Polyn.Serializers.JSONTest do
 
       now = NaiveDateTime.utc_now() |> NaiveDateTime.to_iso8601()
 
-      event =
+      {:ok, event} =
         %{
           id: "foo",
           specversion: "1.0.1",
@@ -82,7 +82,7 @@ defmodule Polyn.Serializers.JSONTest do
     end
 
     test "error if data without dataschema" do
-      json =
+      {:error, message} =
         %{
           id: "foo",
           specversion: "1.0.1",
@@ -91,10 +91,9 @@ defmodule Polyn.Serializers.JSONTest do
           data: %{foo: "bar"}
         }
         |> Jason.encode!()
+        |> JSON.deserialize(@conn_name, store_name: @store_name)
 
-      assert_raise(Polyn.SchemaException, fn ->
-        JSON.deserialize(json, @conn_name, store_name: @store_name)
-      end)
+      assert message =~ "Schema for user.created.v1 does not exist."
 
       delete_store()
     end
@@ -109,19 +108,17 @@ defmodule Polyn.Serializers.JSONTest do
 
       now = NaiveDateTime.utc_now() |> NaiveDateTime.to_iso8601()
 
-      %{message: message} =
-        assert_raise(Polyn.ValidationException, fn ->
-          %{
-            id: "foo",
-            specversion: "1.0.1",
-            type: Event.full_type("user.created.v1"),
-            source: "test",
-            time: now,
-            data: %{foo: "bar"}
-          }
-          |> Jason.encode!()
-          |> JSON.deserialize(@conn_name, store_name: @store_name)
-        end)
+      {:error, message} =
+        %{
+          id: "foo",
+          specversion: "1.0.1",
+          type: Event.full_type("user.created.v1"),
+          source: "test",
+          time: now,
+          data: %{foo: "bar"}
+        }
+        |> Jason.encode!()
+        |> JSON.deserialize(@conn_name, store_name: @store_name)
 
       assert message =~ "Polyn event foo from test is not valid"
       assert message =~ "Property: `#/data/foo` - Type mismatch. Expected Integer but got String."
@@ -130,10 +127,7 @@ defmodule Polyn.Serializers.JSONTest do
     end
 
     test "error if payload is not decodeable" do
-      %{message: message} =
-        assert_raise(Polyn.ValidationException, fn ->
-          JSON.deserialize("foo", @conn_name, store_name: @store_name)
-        end)
+      assert {:error, message} = JSON.deserialize("foo", @conn_name, store_name: @store_name)
 
       assert message =~ "Polyn was unable to decode the following message: \nfoo"
     end
@@ -235,7 +229,7 @@ defmodule Polyn.Serializers.JSONTest do
         )
 
       %{message: message} =
-        assert_raise(Polyn.SchemaException, fn ->
+        assert_raise(Polyn.ValidationException, fn ->
           JSON.serialize!(event, @conn_name, store_name: @store_name)
         end)
 

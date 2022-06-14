@@ -137,19 +137,20 @@ defmodule Polyn.PullConsumer do
   def handle_message(message, %{module: module, state: state} = internal_state) do
     conn = Keyword.fetch!(internal_state.connection_options, :connection_name)
 
-    event = JSON.deserialize(message.body, conn, store_name: internal_state.store_name)
+    case JSON.deserialize(message.body, conn, store_name: internal_state.store_name) do
+      {:ok, event} ->
+        {response, state} = module.handle_message(event, message, state)
 
-    {response, state} = module.handle_message(event, message, state)
+        {response, %{internal_state | state: state}}
 
-    {response, %{internal_state | state: state}}
-  rescue
-    error in Polyn.ValidationException ->
-      # If a validation error happens we want to tell NATS to stop sending the message
-      # and that it won't be processed (ACKTERM) and will prevent us from raising the
-      # same error over and over.
-      Jetstream.ack_term(message)
+      {:error, error} ->
+        # If a validation error happens we want to tell NATS to stop sending the message
+        # and that it won't be processed (ACKTERM) and will prevent us from raising the
+        # same error over and over.
+        Jetstream.ack_term(message)
 
-      reraise(error, __STACKTRACE__)
+        raise Polyn.ValidationException, error
+    end
   end
 
   defp initial_state(module, opts) do
