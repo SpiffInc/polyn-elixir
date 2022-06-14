@@ -2,7 +2,7 @@ defmodule Polyn.PullConsumer do
   @moduledoc """
   Use `Polyn.PullConsumer` to connect and process messages from an existing [NATS Consumer](https://docs.nats.io/nats-concepts/jetstream/consumers)
   that was setup with Polyn CLI. This module is a wrapper around `Jetstream.PullConsumer` that
-  does schema validation with the received messages. This type of of Consumer is meant for simple
+  does schema validation with the received messages. This type of Consumer is meant for simple
   use cases that don't involve concurrency or batching.
   """
 
