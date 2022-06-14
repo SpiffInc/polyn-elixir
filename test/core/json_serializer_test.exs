@@ -139,7 +139,7 @@ defmodule Polyn.Serializers.JSONTest do
     end
   end
 
-  describe "serialize/1" do
+  describe "serialize!/1" do
     test "turns non-data event into JSON" do
       add_schema("user.created.v1", %{
         "type" => "object",
@@ -157,7 +157,7 @@ defmodule Polyn.Serializers.JSONTest do
           source: "test",
           time: now
         )
-        |> JSON.serialize(@conn_name, store_name: @store_name)
+        |> JSON.serialize!(@conn_name, store_name: @store_name)
         |> Jason.decode!()
 
       assert %{
@@ -195,7 +195,7 @@ defmodule Polyn.Serializers.JSONTest do
           source: "test",
           data: %{"foo" => "bar"}
         )
-        |> JSON.serialize(@conn_name, store_name: @store_name)
+        |> JSON.serialize!(@conn_name, store_name: @store_name)
         |> Jason.decode!()
 
       assert json["data"] == %{"foo" => "bar"}
@@ -217,7 +217,7 @@ defmodule Polyn.Serializers.JSONTest do
           datacontenttype: "application/xml",
           data: "<much wow=\"xml\"/>"
         )
-        |> JSON.serialize(@conn_name, store_name: @store_name)
+        |> JSON.serialize!(@conn_name, store_name: @store_name)
         |> Jason.decode!()
 
       assert json["data"] == "<much wow=\"xml\"/>"
@@ -236,7 +236,7 @@ defmodule Polyn.Serializers.JSONTest do
 
       %{message: message} =
         assert_raise(Polyn.SchemaException, fn ->
-          JSON.serialize(event, @conn_name, store_name: @store_name)
+          JSON.serialize!(event, @conn_name, store_name: @store_name)
         end)
 
       assert message =~ "Schema for user.created.v1 does not exist"
@@ -261,7 +261,7 @@ defmodule Polyn.Serializers.JSONTest do
             source: "test",
             data: "foo"
           )
-          |> JSON.serialize(@conn_name, store_name: @store_name)
+          |> JSON.serialize!(@conn_name, store_name: @store_name)
         end)
 
       assert message =~ "Property: `#/id` - Type mismatch. Expected String but got Null."
@@ -285,7 +285,7 @@ defmodule Polyn.Serializers.JSONTest do
             source: "test",
             data: nil
           )
-          |> JSON.serialize(@conn_name, store_name: @store_name)
+          |> JSON.serialize!(@conn_name, store_name: @store_name)
         end)
 
       assert message =~ "Polyn event abc from test is not valid"

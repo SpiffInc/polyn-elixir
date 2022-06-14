@@ -38,7 +38,7 @@ defmodule Polyn.Producer do
         datacontenttype: "application/json",
         polyntrace: build_polyntrace(Keyword.get(opts, :triggered_by))
       )
-      |> JSON.serialize(conn, opts)
+      |> JSON.serialize!(conn, opts)
 
     Gnat.pub(conn, event_type, event)
   end

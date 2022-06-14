@@ -44,8 +44,8 @@ defmodule Polyn.Serializers.JSON do
   Convert a Polyn.Event struct into a JSON paylod.
   Raises an error if event is not valid
   """
-  @spec serialize(event :: Polyn.Event.t(), conn :: Gnat.t()) :: String.t()
-  def serialize(%Event{} = event, conn, opts \\ []) do
+  @spec serialize!(event :: Polyn.Event.t(), conn :: Gnat.t()) :: String.t()
+  def serialize!(%Event{} = event, conn, opts \\ []) do
     Map.from_struct(event)
     |> Enum.reduce(%{}, fn field, acc ->
       serialize_field(acc, field)
