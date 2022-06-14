@@ -35,6 +35,25 @@ that can be used by other services, or natively interact with things such as GCP
 For events that include `data` Polyn also leverages the [JSON Schema](http://json-schema.org/)
 specification to create consistency.
 
+## Configuration
+
+### Domain
+
+The [Cloud Event Spec](https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md#type) specifies that every event "SHOULD be prefixed with a reverse-DNS name." This name should be consistent throughout your organization. You
+define that domain like this:
+
+```elixir
+config :polyn, :domain, "app.spiff"
+```
+
+### Event Source Root
+
+The [Cloud Event Spec](https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md#source-1) specifies that every event MUST have a `source` attribute and recommends it be an absolute [URI](https://en.wikipedia.org/wiki/Uniform_Resource_Identifier). Your application must configure the `source_root` to use for events produced at the application level. Each event producer can include its own `source` to append to the `source_root` if it makes sense.
+
+```elixir
+config :polyn, :source_root, "orders.payments"
+```
+
 ## Event and Data Serialization
 
 Each Producer and Consumer can define what kind of serializer to use for the event. By default they
