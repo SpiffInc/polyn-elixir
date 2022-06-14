@@ -3,7 +3,6 @@ defmodule Polyn.SchemaStore do
   @moduledoc false
 
   alias Jetstream.API.KV
-  alias Polyn.Connection
 
   @store_name "POLYN_SCHEMAS"
 
