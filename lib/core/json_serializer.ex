@@ -72,7 +72,7 @@ defmodule Polyn.Serializers.JSON do
   end
 
   defp get_schema(conn, json, opts) do
-    type = Polyn.Naming.trim_domain_prefix(json["type"])
+    type = get_event_type(json)
 
     case SchemaStore.get(conn, type, name: store_name(opts)) do
       nil ->
@@ -83,6 +83,18 @@ defmodule Polyn.Serializers.JSON do
 
       schema ->
         ExJsonSchema.Schema.resolve(schema)
+    end
+  end
+
+  defp get_event_type(json) do
+    case json["type"] do
+      nil ->
+        raise Polyn.SchemaException,
+              "Could not find a `type` in message #{inspect(json)} \n" <>
+                "Every event must have a `type`"
+
+      type ->
+        Polyn.Naming.trim_domain_prefix(type)
     end
   end
 
