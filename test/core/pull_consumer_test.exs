@@ -108,7 +108,7 @@ defmodule Polyn.PullConsumerTest do
     )
   end
 
-  @tag capture_log: true, timeout: :infinity
+  @tag capture_log: true
   test "errors if payload is invalid" do
     Gnat.pub(@conn_name, "user.created.v1", """
     {
@@ -124,6 +124,46 @@ defmodule Polyn.PullConsumerTest do
     ref = Process.monitor(pid)
 
     assert_receive({:DOWN, ^ref, :process, ^pid, {%Polyn.ValidationException{}, _stack}})
+  end
+
+  @tag capture_log: true
+  test "receives next message after error" do
+    Gnat.pub(@conn_name, "user.created.v1", """
+    {
+      "type": "com.test.user.created.v1",
+      "data": {
+        "name": 123,
+        "element": true
+      }
+    }
+    """)
+
+    Gnat.pub(@conn_name, "user.created.v1", """
+    {
+      "type": "com.test.user.created.v1",
+      "data": {
+        "name": "Toph",
+        "element": "earth"
+      }
+    }
+    """)
+
+    pid = start_listening_for_messages()
+    ref = Process.monitor(pid)
+
+    assert_receive({:DOWN, ^ref, :process, ^pid, {%Polyn.ValidationException{}, _stack}})
+
+    assert_receive(
+      {:received_event,
+       %Event{
+         type: "com.test.user.created.v1",
+         data: %{
+           "name" => "Toph",
+           "element" => "earth"
+         }
+       }},
+      2_000
+    )
   end
 
   defp start_listening_for_messages do

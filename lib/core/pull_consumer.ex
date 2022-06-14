@@ -145,21 +145,9 @@ defmodule Polyn.PullConsumer do
   rescue
     error in Polyn.ValidationException ->
       # If a validation error happens we want to tell NATS to stop sending the message
-      # and that it won't be processed (ACKTERM). We then want to request the next message
-      # and raise an error. Raising the error will give a clear indication that something
-      # went wrong. Requesting the next message will allow things to move forward without
-      # an endless error loop
+      # and that it won't be processed (ACKTERM) and will prevent us from raising the
+      # same error over and over.
       Jetstream.ack_term(message)
-
-      stream_name = Keyword.fetch!(internal_state.connection_options, :stream_name)
-      consumer_name = Keyword.fetch!(internal_state.connection_options, :consumer_name)
-
-      Jetstream.API.Consumer.request_next_message(
-        message.gnat,
-        stream_name,
-        consumer_name,
-        message.reply_to
-      )
 
       reraise(error, __STACKTRACE__)
   end
