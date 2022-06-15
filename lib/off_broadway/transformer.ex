@@ -18,6 +18,12 @@ defmodule OffBroadway.Polyn.Transformer do
         Message.update_data(message, fn _data -> event end)
 
       {:error, error} ->
+        # If a validation error happens we want to tell NATS to stop sending the message
+        # and that it won't be processed (ACKTERM) and will prevent us from raising the
+        # same error over and over.
+        Message.configure_ack(message, on_failure: :term)
+        |> Message.failed(error)
+
         raise Polyn.ValidationException, error
     end
   end

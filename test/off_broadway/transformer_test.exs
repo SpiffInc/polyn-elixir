@@ -117,6 +117,27 @@ defmodule OffBroadway.Polyn.TransformerTest do
     )
   end
 
+  @tag capture_log: true
+  test "error if invalid" do
+    Gnat.pub(@conn_name, "company.created.v1", """
+    {
+      "type": "com.test.company.created.v1",
+      "data": {
+        "name": 123,
+        "element": true
+      }
+    }
+    """)
+
+    start_pipeline()
+    # Monitor our 1 producer process that will fail
+    [producer] = Broadway.producer_names(ExampleBroadwayPipeline)
+    pid = Process.whereis(producer)
+    ref = Process.monitor(pid)
+
+    assert_receive({:DOWN, ^ref, :process, ^pid, {%Polyn.ValidationException{}, _stack}})
+  end
+
   defp start_pipeline do
     start_supervised!({ExampleBroadwayPipeline, test_pid: self()})
   end
