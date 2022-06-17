@@ -12,6 +12,10 @@ defmodule Polyn.ProducerTest do
 
   setup do
     SchemaStore.create_store(@conn_name, name: @store_name)
+
+    on_exit(fn ->
+      cleanup()
+    end)
   end
 
   test "pub/3 adds a new event to the server" do
@@ -30,8 +34,6 @@ defmodule Polyn.ProducerTest do
     assert data["specversion"] == "1.0.1"
     assert data["type"] == "com.test.user.created.v1"
     assert data["polyntrace"] == []
-
-    delete_store()
   end
 
   test "pub/3 can include extra `source` info" do
@@ -45,8 +47,6 @@ defmodule Polyn.ProducerTest do
 
     data = get_message()
     assert data["source"] == "com:test:user:backend:orders"
-
-    delete_store()
   end
 
   test "pub/3 builds up polyntrace if :triggered_by is supplied" do
@@ -84,8 +84,6 @@ defmodule Polyn.ProducerTest do
                "type" => trigger_event.type
              }
            ]
-
-    delete_store()
   end
 
   test "pub/3 raises if doesn't match schema" do
@@ -97,8 +95,6 @@ defmodule Polyn.ProducerTest do
     assert_raise(Polyn.ValidationException, fn ->
       Producer.pub(@conn_name, "user.created.v1", 100, store_name: @store_name, source: "orders")
     end)
-
-    delete_store()
   end
 
   defp add_schema(type, schema) do
@@ -115,7 +111,11 @@ defmodule Polyn.ProducerTest do
     end
   end
 
-  defp delete_store do
-    SchemaStore.delete_store(@conn_name, name: @store_name)
+  defp cleanup do
+    # Manage connection on our own here, because all supervised processes will be
+    # closed by the time `on_exit` runs
+    {:ok, pid} = Gnat.start_link()
+    SchemaStore.delete_store(pid, name: @store_name)
+    Gnat.stop(pid)
   end
 end

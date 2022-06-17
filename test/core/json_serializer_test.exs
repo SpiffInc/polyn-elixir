@@ -12,6 +12,10 @@ defmodule Polyn.Serializers.JSONTest do
 
   setup do
     SchemaStore.create_store(@conn_name, name: @store_name)
+
+    on_exit(fn ->
+      cleanup()
+    end)
   end
 
   describe "deserialize/1" do
@@ -23,7 +27,7 @@ defmodule Polyn.Serializers.JSONTest do
 
       now = NaiveDateTime.utc_now() |> NaiveDateTime.to_iso8601()
 
-      event =
+      {:ok, event} =
         %{
           id: "foo",
           specversion: "1.0.1",
@@ -43,8 +47,6 @@ defmodule Polyn.Serializers.JSONTest do
                time: ^now,
                data: nil
              } = event
-
-      delete_store()
     end
 
     test "turns data json into event" do
@@ -57,7 +59,7 @@ defmodule Polyn.Serializers.JSONTest do
 
       now = NaiveDateTime.utc_now() |> NaiveDateTime.to_iso8601()
 
-      event =
+      {:ok, event} =
         %{
           id: "foo",
           specversion: "1.0.1",
@@ -77,12 +79,10 @@ defmodule Polyn.Serializers.JSONTest do
                time: ^now,
                data: %{"foo" => "bar"}
              } = event
-
-      delete_store()
     end
 
     test "error if data without dataschema" do
-      json =
+      {:error, message} =
         %{
           id: "foo",
           specversion: "1.0.1",
@@ -91,12 +91,9 @@ defmodule Polyn.Serializers.JSONTest do
           data: %{foo: "bar"}
         }
         |> Jason.encode!()
+        |> JSON.deserialize(@conn_name, store_name: @store_name)
 
-      assert_raise(Polyn.SchemaException, fn ->
-        JSON.deserialize(json, @conn_name, store_name: @store_name)
-      end)
-
-      delete_store()
+      assert message =~ "Schema for user.created.v1 does not exist."
     end
 
     test "error if data doesn't match schema" do
@@ -109,28 +106,30 @@ defmodule Polyn.Serializers.JSONTest do
 
       now = NaiveDateTime.utc_now() |> NaiveDateTime.to_iso8601()
 
-      %{message: message} =
-        assert_raise(Polyn.ValidationException, fn ->
-          %{
-            id: "foo",
-            specversion: "1.0.1",
-            type: Event.full_type("user.created.v1"),
-            source: "test",
-            time: now,
-            data: %{foo: "bar"}
-          }
-          |> Jason.encode!()
-          |> JSON.deserialize(@conn_name, store_name: @store_name)
-        end)
+      {:error, message} =
+        %{
+          id: "foo",
+          specversion: "1.0.1",
+          type: Event.full_type("user.created.v1"),
+          source: "test",
+          time: now,
+          data: %{foo: "bar"}
+        }
+        |> Jason.encode!()
+        |> JSON.deserialize(@conn_name, store_name: @store_name)
 
       assert message =~ "Polyn event foo from test is not valid"
       assert message =~ "Property: `#/data/foo` - Type mismatch. Expected Integer but got String."
+    end
 
-      delete_store()
+    test "error if payload is not decodeable" do
+      assert {:error, message} = JSON.deserialize("foo", @conn_name, store_name: @store_name)
+
+      assert message =~ "Polyn was unable to decode the following message: \nfoo"
     end
   end
 
-  describe "serialize/1" do
+  describe "serialize!/1" do
     test "turns non-data event into JSON" do
       add_schema("user.created.v1", %{
         "type" => "object",
@@ -148,7 +147,7 @@ defmodule Polyn.Serializers.JSONTest do
           source: "test",
           time: now
         )
-        |> JSON.serialize(@conn_name, store_name: @store_name)
+        |> JSON.serialize!(@conn_name, store_name: @store_name)
         |> Jason.decode!()
 
       assert %{
@@ -167,8 +166,6 @@ defmodule Polyn.Serializers.JSONTest do
              } = json
 
       assert UUID.info!(json["id"]) |> Keyword.get(:version) == 4
-
-      delete_store()
     end
 
     test "turns data event into JSON" do
@@ -186,12 +183,11 @@ defmodule Polyn.Serializers.JSONTest do
           source: "test",
           data: %{"foo" => "bar"}
         )
-        |> JSON.serialize(@conn_name, store_name: @store_name)
+        |> JSON.serialize!(@conn_name, store_name: @store_name)
         |> Jason.decode!()
 
       assert json["data"] == %{"foo" => "bar"}
       assert json["datacontenttype"] == "application/json"
-      delete_store()
     end
 
     test "works with different datacontenttype than json" do
@@ -208,12 +204,11 @@ defmodule Polyn.Serializers.JSONTest do
           datacontenttype: "application/xml",
           data: "<much wow=\"xml\"/>"
         )
-        |> JSON.serialize(@conn_name, store_name: @store_name)
+        |> JSON.serialize!(@conn_name, store_name: @store_name)
         |> Jason.decode!()
 
       assert json["data"] == "<much wow=\"xml\"/>"
       assert json["datacontenttype"] == "application/xml"
-      delete_store()
     end
 
     test "error if no dataschema, even without data" do
@@ -226,12 +221,11 @@ defmodule Polyn.Serializers.JSONTest do
         )
 
       %{message: message} =
-        assert_raise(Polyn.SchemaException, fn ->
-          JSON.serialize(event, @conn_name, store_name: @store_name)
+        assert_raise(Polyn.ValidationException, fn ->
+          JSON.serialize!(event, @conn_name, store_name: @store_name)
         end)
 
       assert message =~ "Schema for user.created.v1 does not exist"
-      delete_store()
     end
 
     test "error if missing id" do
@@ -252,11 +246,10 @@ defmodule Polyn.Serializers.JSONTest do
             source: "test",
             data: "foo"
           )
-          |> JSON.serialize(@conn_name, store_name: @store_name)
+          |> JSON.serialize!(@conn_name, store_name: @store_name)
         end)
 
       assert message =~ "Property: `#/id` - Type mismatch. Expected String but got Null."
-      delete_store()
     end
 
     test "error if data and schema don't match" do
@@ -276,12 +269,11 @@ defmodule Polyn.Serializers.JSONTest do
             source: "test",
             data: nil
           )
-          |> JSON.serialize(@conn_name, store_name: @store_name)
+          |> JSON.serialize!(@conn_name, store_name: @store_name)
         end)
 
       assert message =~ "Polyn event abc from test is not valid"
       assert message =~ "Property: `#/data` - Type mismatch. Expected String but got Null."
-      delete_store()
     end
   end
 
@@ -289,7 +281,11 @@ defmodule Polyn.Serializers.JSONTest do
     SchemaStore.save(@conn_name, type, schema, name: @store_name)
   end
 
-  defp delete_store do
-    SchemaStore.delete_store(@conn_name, name: @store_name)
+  defp cleanup do
+    # Manage connection on our own here, because all supervised processes will be
+    # closed by the time `on_exit` runs
+    {:ok, pid} = Gnat.start_link()
+    SchemaStore.delete_store(pid, name: @store_name)
+    Gnat.stop(pid)
   end
 end
