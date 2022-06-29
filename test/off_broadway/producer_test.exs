@@ -1,6 +1,7 @@
 defmodule OffBroadway.Polyn.ProducerTest do
   use Polyn.ConnCase, async: true
 
+  alias Broadway.Message
   alias Jetstream.API.{Consumer, Stream}
   alias Polyn.{Event, SchemaStore}
 
@@ -63,7 +64,7 @@ defmodule OffBroadway.Polyn.ProducerTest do
     end
 
     def handle_message(_processor_name, message, context) do
-      send(context.test_pid, {:received_event, message.data})
+      send(context.test_pid, {:received_event, message})
       message
     end
   end
@@ -93,22 +94,26 @@ defmodule OffBroadway.Polyn.ProducerTest do
 
     assert_receive(
       {:received_event,
-       %Event{
-         type: "com.test.company.created.v1",
-         data: %{
-           "name" => "Katara",
-           "element" => "water"
+       %Message{
+         data: %Event{
+           type: "com.test.company.created.v1",
+           data: %{
+             "name" => "Katara",
+             "element" => "water"
+           }
          }
        }}
     )
 
     assert_receive(
       {:received_event,
-       %Event{
-         type: "com.test.company.created.v1",
-         data: %{
-           "name" => "Toph",
-           "element" => "earth"
+       %Message{
+         data: %Event{
+           type: "com.test.company.created.v1",
+           data: %{
+             "name" => "Toph",
+             "element" => "earth"
+           }
          }
        }}
     )
@@ -117,6 +122,8 @@ defmodule OffBroadway.Polyn.ProducerTest do
   test "invalid message is ACKTERM and removed from pipeline" do
     Gnat.pub(@conn_name, "company.created.v1", """
     {
+      "id": "abc",
+      "source": "com.test.foo",
       "type": "com.test.company.created.v1",
       "data": {
         "name": 123,
@@ -141,25 +148,28 @@ defmodule OffBroadway.Polyn.ProducerTest do
 
     assert_receive(
       {:received_event,
-       %Event{
-         type: "com.test.company.created.v1",
-         data: %{
-           "name" => "Toph",
-           "element" => "earth"
+       %Message{
+         data: %Event{
+           type: "com.test.company.created.v1",
+           data: %{
+             "name" => "Toph",
+             "element" => "earth"
+           }
          }
        }}
     )
 
-    refute_receive(
-      {:received_event,
-       %Event{
-         type: "com.test.company.created.v1",
-         data: %{
-           "name" => 123,
-           "element" => true
-         }
-       }}
-    )
+    {:received_event, message} =
+      assert_receive(
+        {:received_event,
+         %Message{
+           status: {:failed, _message}
+         }}
+      )
+
+    assert message.data =~ "\"name\": 123"
+    assert {:failed, error} = message.status
+    assert error =~ "Polyn event abc from com.test.foo is not valid"
 
     assert_receive({:msg, %{body: "+TERM"}})
   end
