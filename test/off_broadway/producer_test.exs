@@ -114,6 +114,56 @@ defmodule OffBroadway.Polyn.ProducerTest do
     )
   end
 
+  test "invalid message is ACKTERM and removed from pipeline" do
+    Gnat.pub(@conn_name, "company.created.v1", """
+    {
+      "type": "com.test.company.created.v1",
+      "data": {
+        "name": 123,
+        "element": true
+      }
+    }
+    """)
+
+    Gnat.pub(@conn_name, "company.created.v1", """
+    {
+      "type": "com.test.company.created.v1",
+      "data": {
+        "name": "Toph",
+        "element": "earth"
+      }
+    }
+    """)
+
+    Gnat.sub(@conn_name, self(), "$JS.ACK.#{@stream_name}.#{@consumer_name}.>")
+
+    start_pipeline()
+
+    assert_receive(
+      {:received_event,
+       %Event{
+         type: "com.test.company.created.v1",
+         data: %{
+           "name" => "Toph",
+           "element" => "earth"
+         }
+       }}
+    )
+
+    refute_receive(
+      {:received_event,
+       %Event{
+         type: "com.test.company.created.v1",
+         data: %{
+           "name" => 123,
+           "element" => true
+         }
+       }}
+    )
+
+    assert_receive({:msg, %{body: "+TERM"}})
+  end
+
   defp start_pipeline do
     start_supervised!({ExampleBroadwayPipeline, test_pid: self()})
   end

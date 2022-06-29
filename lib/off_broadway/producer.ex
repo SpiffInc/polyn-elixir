@@ -45,8 +45,9 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
         {:ok, event} ->
           Message.update_data(message, fn _data -> event end)
 
-        {:error, _error} ->
+        {:error, error} ->
           Message.configure_ack(message, on_failure: :term)
+          |> Message.failed(error)
       end
     end
 
