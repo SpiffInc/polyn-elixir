@@ -1,8 +1,22 @@
 with {:module, _} <- Code.ensure_compiled(Broadway) do
   defmodule OffBroadway.Polyn.Producer do
     @moduledoc """
-    A Broadway Producer for Polyn. It wraps `OffBroadway.Jetstream.Producer` and will validate
-    that any messages coming through are valid events and follow the schema for the event
+    A [Broadway](https://hexdocs.pm/broadway/Broadway.html) Producer for Polyn.
+
+    The word `Producer` here is confusing because the word is overloaded.
+    In this module `Producer` refers to [GenStage](https://hexdocs.pm/gen_stage/GenStage.html) data
+    pipelines where a `:producer` is the stage that receives demand for data and sends it to a `:consumer`.
+    This module isn't creating events to send to our NATS server. It doesn't "produce" new events for
+    the rest of the system to consume. Rather it consumes events from a NATS Stream and passes them
+    to GenStage `:consumer` modules you create.
+
+    ## Usage
+
+    This module wraps `OffBroadway.Jetstream.Producer` and will validate that any messages coming through
+    are valid events and conform to the schema for the event. Use the `OffBroadway.Jetstream.Producer` documentation
+    to learn how to use it. The only difference being you will use `OffBroadway.Polyn.Producer`
+    in your `:module` configuration instead of the Jetsteram one. Invalid messages will send an ACKTERM
+    to the NATS server so that they aren't sent again. They will be marked as `failed` and removed from the pipeline.
     """
     use GenStage
 
