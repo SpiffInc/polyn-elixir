@@ -35,6 +35,10 @@ that can be used by other services, or natively interact with things such as GCP
 For events that include `data` Polyn also leverages the [JSON Schema](http://json-schema.org/)
 specification to create consistency.
 
+## Schema Creation
+
+In order for Polyn to process and validate event schemas you will need to use [Polyn CLI](https://github.com/SpiffInc/polyn-cli) to create an `events` codebase. Once your `events` codebase is created you can create and manage your schemas there.
+
 ## Configuration
 
 ### Domain
@@ -53,16 +57,6 @@ The [Cloud Event Spec](https://github.com/cloudevents/spec/blob/v1.0.2/cloudeven
 ```elixir
 config :polyn, :source_root, "orders.payments"
 ```
-
-## Event and Data Serialization
-
-Each Producer and Consumer can define what kind of serializer to use for the event. By default they
-will use `Polyn.Serializers.JSON`.
-
-### `datacontenttype`
-The [Cloud Event Spec](https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md#datacontenttype) allows for the possibility for the `data` in the event to differ in format than the event itself. For example you may have
-an event that is being serialized as JSON, but the data inside is XML. By default the serializer will assume any `data` is the same format as the event itself. If the `data` differs you must specify its format with the
-`datacontenttype` attribute.
 
 ## Installation
 
