@@ -22,6 +22,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
 
     alias Broadway.{Message, Producer}
     alias Polyn.SchemaStore
+    alias Polyn.Serializers.JSON
 
     @behaviour Producer
 
@@ -55,7 +56,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
     end
 
     defp message_to_event(conn, store_name, %Message{data: data} = message) do
-      case Polyn.Serializers.JSON.deserialize(data, conn, store_name: store_name) do
+      case JSON.deserialize(data, conn, store_name: store_name) do
         {:ok, event} ->
           Message.update_data(message, fn _data -> event end)
 
