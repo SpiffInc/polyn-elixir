@@ -6,9 +6,9 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
     The word `Producer` here is confusing because the word is overloaded.
     In this module `Producer` refers to [GenStage](https://hexdocs.pm/gen_stage/GenStage.html) data
     pipelines where a `:producer` is the stage that receives demand for data and sends it to a `:consumer`.
-    This module isn't creating events to send to our NATS server. It doesn't "produce" new events for
-    the rest of the system to consume. Rather it consumes events from a NATS Stream and passes them
-    to GenStage `:consumer` modules you create.
+    This module doesn't "produce" new events that get added to the NATS server for other services to consume.
+    Rather it consumes existing events from a NATS Stream and passes them to GenStage `:consumer` modules
+    in one application.
 
     ## Usage
 
