@@ -18,43 +18,43 @@ defmodule PolynTest do
   end
 
   test "pub/3 adds a new event to the server" do
-    add_schema("user.created.v1", %{
+    add_schema("pub.test.event.v1", %{
       "type" => "object",
       "properties" => %{"data" => %{"type" => "string"}}
     })
 
-    Gnat.sub(@conn_name, self(), "user.created.v1")
-    Polyn.pub(@conn_name, "user.created.v1", "foo", store_name: @store_name)
+    Gnat.sub(@conn_name, self(), "pub.test.event.v1")
+    Polyn.pub(@conn_name, "pub.test.event.v1", "foo", store_name: @store_name)
 
     data = get_message()
     assert data["data"] == "foo"
     assert data["datacontenttype"] == "application/json"
     assert data["source"] == "com:test:user:backend"
     assert data["specversion"] == "1.0.1"
-    assert data["type"] == "com.test.user.created.v1"
+    assert data["type"] == "com.test.pub.test.event.v1"
     assert data["polyntrace"] == []
   end
 
   test "pub/3 can include extra `source` info" do
-    add_schema("user.created.v1", %{
+    add_schema("pub.test.event.v1", %{
       "type" => "object",
       "properties" => %{"data" => %{"type" => "string"}}
     })
 
-    Gnat.sub(@conn_name, self(), "user.created.v1")
-    Polyn.pub(@conn_name, "user.created.v1", "foo", store_name: @store_name, source: "orders")
+    Gnat.sub(@conn_name, self(), "pub.test.event.v1")
+    Polyn.pub(@conn_name, "pub.test.event.v1", "foo", store_name: @store_name, source: "orders")
 
     data = get_message()
     assert data["source"] == "com:test:user:backend:orders"
   end
 
   test "pub/3 builds up polyntrace if :triggered_by is supplied" do
-    add_schema("user.created.v1", %{
+    add_schema("pub.test.event.v1", %{
       "type" => "object",
       "properties" => %{"data" => %{"type" => "string"}}
     })
 
-    Gnat.sub(@conn_name, self(), "user.created.v1")
+    Gnat.sub(@conn_name, self(), "pub.test.event.v1")
 
     trigger_event =
       Event.new(
@@ -68,7 +68,7 @@ defmodule PolynTest do
         ]
       )
 
-    Polyn.pub(@conn_name, "user.created.v1", "foo",
+    Polyn.pub(@conn_name, "pub.test.event.v1", "foo",
       store_name: @store_name,
       triggered_by: trigger_event
     )
@@ -86,13 +86,13 @@ defmodule PolynTest do
   end
 
   test "pub/3 raises if doesn't match schema" do
-    add_schema("user.created.v1", %{
+    add_schema("pub.test.event.v1", %{
       "type" => "object",
       "properties" => %{"data" => %{"type" => "string"}}
     })
 
     assert_raise(Polyn.ValidationException, fn ->
-      Polyn.pub(@conn_name, "user.created.v1", 100, store_name: @store_name, source: "orders")
+      Polyn.pub(@conn_name, "pub.test.event.v1", 100, store_name: @store_name, source: "orders")
     end)
   end
 
