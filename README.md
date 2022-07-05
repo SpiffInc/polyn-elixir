@@ -58,6 +58,21 @@ The [Cloud Event Spec](https://github.com/cloudevents/spec/blob/v1.0.2/cloudeven
 config :polyn, :source_root, "orders.payments"
 ```
 
+## Usage
+
+### Publishing Messages
+
+Use `Polyn.pub/4` to publish new events to the server
+
+### Simple Message Consumption
+
+If you have use case that doesn't require batching or concurrency you can use `Polyn.PullConsumer` to receive messages one at a time
+
+### Complex Message Consumption
+
+If you have a complex use case requiring batching or concurrency you should use the
+`OffBroadway.Polyn.Producer` to create a data pipeline for your messages.
+
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
