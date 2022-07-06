@@ -119,7 +119,8 @@ defmodule OffBroadway.Polyn.ProducerTest do
     )
   end
 
-  test "invalid message is ACKTERM and removed from pipeline" do
+  @tag capture_log: true
+  test "invalid message is ACKTERM and raises" do
     Gnat.pub(@conn_name, "company.created.v1", """
     {
       "id": "abc",
@@ -146,7 +147,19 @@ defmodule OffBroadway.Polyn.ProducerTest do
 
     start_pipeline()
 
-    assert_receive(
+    pid =
+      Broadway.producer_names(ExampleBroadwayPipeline)
+      |> Enum.at(0)
+      |> Process.whereis()
+
+    ref = Process.monitor(pid)
+
+    {:DOWN, _ref, :process, _pid, {%{message: message}, _stack}} =
+      assert_receive({:DOWN, ^ref, :process, ^pid, {%Polyn.ValidationException{}, _stack}})
+
+    assert message =~ "Polyn event abc from com.test.foo is not valid"
+
+    refute_receive(
       {:received_event,
        %Message{
          data: %Event{
@@ -159,19 +172,8 @@ defmodule OffBroadway.Polyn.ProducerTest do
        }}
     )
 
-    {:received_event, message} =
-      assert_receive(
-        {:received_event,
-         %Message{
-           status: {:failed, _message}
-         }}
-      )
-
-    assert message.data =~ "\"name\": 123"
-    assert {:failed, error} = message.status
-    assert error =~ "Polyn event abc from com.test.foo is not valid"
-
     assert_receive({:msg, %{body: "+TERM"}})
+    assert_receive({:msg, %{body: "-NAK"}})
   end
 
   defp start_pipeline do
