@@ -18,7 +18,7 @@ defmodule Polyn.Serializers.JSONTest do
     end)
   end
 
-  describe "deserialize/1" do
+  describe "deserialize/3" do
     test "turns non-data json into eventt" do
       add_schema("user.created.v1", %{
         "type" => "object",
@@ -129,7 +129,26 @@ defmodule Polyn.Serializers.JSONTest do
     end
   end
 
-  describe "serialize!/1" do
+  describe "deserialize!/3" do
+    test "raises if invalid" do
+      %{message: message} =
+        assert_raise(Polyn.ValidationException, fn ->
+          %{
+            id: "foo",
+            specversion: "1.0.1",
+            type: Event.full_type("user.created.v1"),
+            source: "test",
+            data: %{foo: "bar"}
+          }
+          |> Jason.encode!()
+          |> JSON.deserialize!(@conn_name, store_name: @store_name)
+        end)
+
+      assert message =~ "Schema for user.created.v1 does not exist."
+    end
+  end
+
+  describe "serialize!/3" do
     test "turns non-data event into JSON" do
       add_schema("user.created.v1", %{
         "type" => "object",

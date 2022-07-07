@@ -8,7 +8,6 @@ defmodule Polyn.Serializers.JSON do
 
   @doc """
   Convert a JSON payload into a Polyn.Event struct
-  Raises an error if json is not valid
   """
   @spec deserialize(json :: binary(), conn :: Gnat.t()) ::
           {:ok, Polyn.Event.t()} | {:error, binary()}
@@ -16,6 +15,14 @@ defmodule Polyn.Serializers.JSON do
     with {:ok, data} <- decode(json),
          {:ok, json} <- validate(data, conn, opts) do
       {:ok, to_event(json)}
+    end
+  end
+
+  @spec deserialize!(json :: binary(), conn :: Gnat.t()) :: Polyn.Event.t()
+  def deserialize!(json, conn, opts \\ []) do
+    case deserialize(json, conn, opts) do
+      {:ok, event} -> event
+      {:error, error} -> raise Polyn.ValidationException, error
     end
   end
 
