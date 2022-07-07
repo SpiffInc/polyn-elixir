@@ -73,6 +73,10 @@ If you have use case that doesn't require batching or concurrency you can use `P
 If you have a complex use case requiring batching or concurrency you should use the
 `OffBroadway.Polyn.Producer` to create a data pipeline for your messages.
 
+### Request-Reply
+
+You can use `Polyn.request/4` to a do a [psuedo-synchronous request](https://docs.nats.io/nats-concepts/core-nats/reqreply). You can subscribe to an event using `Gnat.sub/4` and reply using `Polyn.reply/5`. Both your request and your reply will need schema definitions and will be validated against them.
+
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
