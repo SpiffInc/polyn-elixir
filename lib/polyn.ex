@@ -20,6 +20,7 @@ defmodule Polyn do
   `source_root`
   * `:triggered_by` - The event that triggered this one. Will use information from the event to build
   up the `polyntrace` data
+  * See `Gnat.pub/4` for other options
 
   ## Examples
 
@@ -31,18 +32,22 @@ defmodule Polyn do
   @spec pub(conn :: Gnat.t(), event_type :: binary(), data :: any(), opts :: list(pub_options())) ::
           :ok
   def pub(conn, event_type, data, opts \\ []) do
+    {source, opts} = Keyword.pop(opts, :source)
+    {triggered_by, opts} = Keyword.pop(opts, :triggered_by)
+    {store_name, opts} = Keyword.pop(opts, :store_name)
+
     event =
       Event.new(
         type: Event.full_type(event_type),
         data: data,
         specversion: "1.0.1",
-        source: Event.full_source(Keyword.get(opts, :source)),
+        source: Event.full_source(source),
         datacontenttype: "application/json",
-        polyntrace: build_polyntrace(Keyword.get(opts, :triggered_by))
+        polyntrace: build_polyntrace(triggered_by)
       )
-      |> JSON.serialize!(conn, opts)
+      |> JSON.serialize!(conn, store_name: store_name)
 
-    Gnat.pub(conn, event_type, event)
+    Gnat.pub(conn, event_type, event, opts)
   end
 
   defp build_polyntrace(nil), do: []

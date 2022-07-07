@@ -10,7 +10,7 @@ defmodule PolynTest do
   @store_name "PRODUCER_TEST_SCHEMA_STORE"
 
   setup do
-    SchemaStore.create_store(@conn_name, name: @store_name)
+    :ok = SchemaStore.create_store(@conn_name, name: @store_name)
 
     on_exit(fn ->
       cleanup()
@@ -94,6 +94,24 @@ defmodule PolynTest do
     assert_raise(Polyn.ValidationException, fn ->
       Polyn.pub(@conn_name, "pub.test.event.v1", 100, store_name: @store_name, source: "orders")
     end)
+  end
+
+  test "pub/3 passes through other options" do
+    add_schema("pub.test.event.v1", %{
+      "type" => "object",
+      "properties" => %{"data" => %{"type" => "string"}}
+    })
+
+    Gnat.sub(@conn_name, self(), "pub.test.event.v1")
+    Polyn.pub(@conn_name, "pub.test.event.v1", "foo", store_name: @store_name, reply_to: "foo")
+
+    reply_to =
+      receive do
+        {:msg, %{reply_to: reply_to}} ->
+          reply_to
+      end
+
+    assert reply_to == "foo"
   end
 
   defp add_schema(type, schema) do
