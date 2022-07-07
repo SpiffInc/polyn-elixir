@@ -90,7 +90,8 @@ defmodule Polyn.Serializers.JSON do
   end
 
   defp validate(json, conn, opts) do
-    with {:ok, type} <- get_event_type(json),
+    with :ok <- validate_cloud_event(json),
+         {:ok, type} <- get_event_type(json),
          {:ok, schema} <- get_schema(conn, type, opts),
          :ok <- validate_schema(schema, json) do
       {:ok, json}
@@ -98,6 +99,14 @@ defmodule Polyn.Serializers.JSON do
       {:error, errors} ->
         {:error, handle_errors(errors, json)}
     end
+  end
+
+  # We want to make sure the json even looks like a CloudEvent
+  # and isn't some other datatype that can't even be parsed
+  defp validate_cloud_event(json) when is_map(json), do: :ok
+
+  defp validate_cloud_event(json) do
+    {:error, ["Polyn events need to follow the CloudEvent spec, got #{inspect(json)}"]}
   end
 
   defp get_schema(conn, type, opts) do
@@ -142,11 +151,13 @@ defmodule Polyn.Serializers.JSON do
     end
   end
 
-  defp handle_errors(errors, json) do
+  defp handle_errors(errors, json) when is_map(json) do
     errors = add_error(errors, "Polyn event #{json["id"]} from #{json["source"]} is not valid")
     errors = errors ++ ["Event data: #{inspect(json)}"]
     Enum.join(errors, "\n")
   end
+
+  defp handle_errors(errors, _json), do: Enum.join(errors, "\n")
 
   defp add_error(errors, error) do
     [error | errors]

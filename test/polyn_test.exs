@@ -116,6 +116,104 @@ defmodule PolynTest do
     end
   end
 
+  describe "reply/5" do
+    test "replies to a message" do
+      add_schema("reply.test.event.v1", %{
+        "type" => "object",
+        "properties" => %{"data" => %{"type" => "string"}}
+      })
+
+      Gnat.sub(@conn_name, self(), "INBOX.me")
+      Polyn.reply(@conn_name, "INBOX.me", "reply.test.event.v1", "foo", store_name: @store_name)
+
+      data = get_message()
+      assert data["data"] == "foo"
+    end
+
+    test "raises if doesn't match schema" do
+      add_schema("reply.test.event.v1", %{
+        "type" => "object",
+        "properties" => %{"data" => %{"type" => "string"}}
+      })
+
+      assert_raise(Polyn.ValidationException, fn ->
+        Polyn.reply(@conn_name, "INBOX.me", "reply.test.event.v1", 100, store_name: @store_name)
+      end)
+    end
+  end
+
+  describe "request/4" do
+    test "returned message is an event" do
+      add_schema("request.test.request.v1", %{
+        "type" => "object",
+        "properties" => %{"data" => %{"type" => "string"}}
+      })
+
+      add_schema("request.test.response.v1", %{
+        "type" => "object",
+        "properties" => %{"data" => %{"type" => "string"}}
+      })
+
+      pid =
+        spawn_link(fn ->
+          Gnat.sub(@conn_name, self(), "request.test.request.v1")
+
+          receive do
+            {:msg, %{topic: "request.test.request.v1", reply_to: reply_to}} ->
+              Polyn.reply(@conn_name, reply_to, "request.test.response.v1", "bar",
+                store_name: @store_name
+              )
+          end
+        end)
+
+      {:ok, %{body: event}} =
+        Polyn.request(@conn_name, "request.test.request.v1", "foo", store_name: @store_name)
+
+      assert event.data == "bar"
+
+      Process.exit(pid, :kill)
+    end
+
+    test "error if request event doesn't match schema" do
+      add_schema("request.test.request.v1", %{
+        "type" => "object",
+        "properties" => %{"data" => %{"type" => "string"}}
+      })
+
+      assert_raise(Polyn.ValidationException, fn ->
+        Polyn.request(@conn_name, "request.test.request.v1", 100, store_name: @store_name)
+      end)
+    end
+
+    test "error if reply event doesn't match schema" do
+      add_schema("request.test.request.v1", %{
+        "type" => "object",
+        "properties" => %{"data" => %{"type" => "string"}}
+      })
+
+      add_schema("request.test.response.v1", %{
+        "type" => "object",
+        "properties" => %{"data" => %{"type" => "string"}}
+      })
+
+      pid =
+        spawn_link(fn ->
+          Gnat.sub(@conn_name, self(), "request.test.request.v1")
+
+          receive do
+            {:msg, %{topic: "request.test.request.v1", reply_to: reply_to}} ->
+              Gnat.pub(@conn_name, reply_to, "100")
+          end
+        end)
+
+      assert_raise(Polyn.ValidationException, fn ->
+        Polyn.request(@conn_name, "request.test.request.v1", "foo", store_name: @store_name)
+      end)
+
+      Process.exit(pid, :kill)
+    end
+  end
+
   defp add_schema(type, schema) do
     SchemaStore.save(@conn_name, type, schema, name: @store_name)
   end
