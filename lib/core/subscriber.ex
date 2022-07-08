@@ -13,6 +13,10 @@ defmodule Polyn.Subscriber do
         event: "user.created.v1")
     end
 
+    def init(_arg) do
+      {:ok, nil}
+    end
+
     def handle_message(event, message, state) do
       # Do something cool with the event
       {:noreply, state}
@@ -28,6 +32,10 @@ defmodule Polyn.Subscriber do
 
   @type start_options :: GenServer.option() | {:connection_name, Gnat.t()} | {:event, binary()}
 
+  @doc """
+  Called when the subscribed event is published. Return the same values as you would for a
+  `c:Genserver.handle_info/2` callback
+  """
   @callback handle_message(event :: Event.t(), msg :: Gnat.message(), state :: any()) ::
               {:noreply, new_state}
               | {:noreply, new_state, timeout() | :hibernate | {:continue, term()}}

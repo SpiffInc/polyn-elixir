@@ -65,6 +65,18 @@ defmodule Polyn.SubscriberTest do
     )
   end
 
+  @tag capture_log: true
+  test "raises if message is invalid" do
+    pid = start_supervised!({ExampleSubscriber, %{test_pid: self()}})
+    ref = Process.monitor(pid)
+
+    Polyn.pub(@conn_name, "subscriber.test.event.v1", %{name: 123, element: 456},
+      store_name: @store_name
+    )
+
+    assert_receive({:DOWN, ^ref, :process, ^pid, {%Polyn.ValidationException{}, _stack}})
+  end
+
   defp add_schema(type, schema) do
     SchemaStore.save(@conn_name, type, schema, name: @store_name)
   end
