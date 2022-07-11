@@ -1,8 +1,7 @@
 defmodule Polyn.Serializers.JSON do
-  @moduledoc """
-  JSON Serializer for Polyn events. Functions will raise if
-  inconsistencies are found
-  """
+  # JSON Serializer for Polyn events. Functions will raise if
+  # inconsistencies are found
+  @moduledoc false
 
   alias Polyn.Event
   alias Polyn.SchemaStore
