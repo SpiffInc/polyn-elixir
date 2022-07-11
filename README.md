@@ -98,7 +98,7 @@ end
 
 ### Optional Broadway Dependency
 
-To use the `OffBrodway.Polyn.Producer` you'll also need to add a `Broadway` as a
+To use the `OffBroadway.Polyn.Producer` you'll also need to add a `Broadway` as a
 dependency
 
 ## Documentation
