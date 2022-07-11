@@ -72,6 +72,10 @@ defmodule OffBroadway.Polyn.ProducerTest do
   test "valid messages are converted to Event structs" do
     Gnat.pub(@conn_name, "company.created.v1", """
     {
+      "id": "abc",
+      "source": "com.test.foo",
+      "type": "com.test.company.created.v1",
+      "specversion": "1.0.1",
       "type": "com.test.company.created.v1",
       "data": {
         "name": "Toph",
@@ -82,6 +86,10 @@ defmodule OffBroadway.Polyn.ProducerTest do
 
     Gnat.pub(@conn_name, "company.created.v1", """
     {
+      "id": "abc",
+      "source": "com.test.foo",
+      "type": "com.test.company.created.v1",
+      "specversion": "1.0.1",
       "type": "com.test.company.created.v1",
       "data": {
         "name": "Katara",
@@ -126,6 +134,7 @@ defmodule OffBroadway.Polyn.ProducerTest do
       "id": "abc",
       "source": "com.test.foo",
       "type": "com.test.company.created.v1",
+      "specversion": "1.0.1",
       "data": {
         "name": 123,
         "element": true
@@ -135,7 +144,10 @@ defmodule OffBroadway.Polyn.ProducerTest do
 
     Gnat.pub(@conn_name, "company.created.v1", """
     {
+      "id": "abc",
+      "source": "com.test.foo",
       "type": "com.test.company.created.v1",
+      "specversion": "1.0.1",
       "data": {
         "name": "Toph",
         "element": "earth"

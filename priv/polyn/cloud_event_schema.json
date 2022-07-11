@@ -172,10 +172,12 @@
             "type": "string"
           },
           "time": {
-            "type": "date-time"
+            "type": "string",
+            "format": "date-time"
           },
           "id"  : {
-            "type": "uuid"
+            "type": "string",
+            "format": "uuid"
           }
         },
         "required": ["type", "time", "id"]
