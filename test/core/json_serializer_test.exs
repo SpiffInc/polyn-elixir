@@ -175,10 +175,10 @@ defmodule Polyn.Serializers.JSONTest do
                "source" => "test",
                "time" => ^now,
                "polyntrace" => [],
-               "polynclient" => %{
-                 "lang" => "elixir",
-                 "langversion" => ^langversion,
-                 "version" => ^version
+               "polyndata" => %{
+                 "clientlang" => "elixir",
+                 "clientlangversion" => ^langversion,
+                 "clientversion" => ^version
                },
                "data" => nil,
                "datacontenttype" => "application/json"

@@ -14,9 +14,9 @@ defmodule Polyn.Event do
             source: nil,
             time: nil,
             polyntrace: [],
-            polynclient: %{
-              lang: "elixir",
-              langversion: System.build_info().version
+            polyndata: %{
+              clientlang: "elixir",
+              clientlangversion: System.build_info().version
             }
 
   @type polyntrace :: %{
@@ -35,7 +35,7 @@ defmodule Polyn.Event do
   `source` - Identifies the context in which an event happened.
   `time` - Timestamp of when the occurrence happened. Must adhere to RFC 3339.
   `polyntrace` - Previous events that led to this one
-  `polynclient` - Information about the client that produced the event
+  `polyndata` - Information about the client that produced the event and additional data
   """
   @type t() :: %__MODULE__{
           id: String.t(),
@@ -47,7 +47,7 @@ defmodule Polyn.Event do
           source: String.t(),
           time: String.t(),
           polyntrace: list(polyntrace()),
-          polynclient: map()
+          polyndata: map()
         }
 
   @doc """
@@ -84,7 +84,7 @@ defmodule Polyn.Event do
   end
 
   defp add_polyn_version(%__MODULE__{} = event) do
-    put_in(event, [Access.key!(:polynclient), :version], polyn_version())
+    put_in(event, [Access.key!(:polyndata), :clientversion], polyn_version())
   end
 
   defp polyn_version do
