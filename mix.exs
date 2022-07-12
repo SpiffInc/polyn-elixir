@@ -14,7 +14,11 @@ defmodule Polyn.MixProject do
       aliases: aliases(),
       name: "Polyn",
       source_url: "https://github.com/SpiffInc/polyn-elixir",
-      docs: [extras: ["README.md"]]
+      docs: [
+        extras: ["README.md"],
+        api_reference: false,
+        main: "README.md"
+      ]
     ]
   end
 
