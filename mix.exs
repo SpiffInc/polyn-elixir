@@ -11,7 +11,10 @@ defmodule Polyn.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      aliases: aliases()
+      aliases: aliases(),
+      name: "Polyn",
+      source_url: "https://github.com/SpiffInc/polyn-elixir",
+      docs: [extras: ["README.md"]]
     ]
   end
 
@@ -34,9 +37,8 @@ defmodule Polyn.MixProject do
       {:uuid, "~> 1.1"},
       {:mox, "~> 1.0", only: :test},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
-      {:jetstream, git: "https://github.com/mmmries/jetstream"}
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
+      {:jetstream, git: "https://github.com/mmmries/jetstream"},
+      {:ex_doc, "~> 0.28", only: :dev, runtime: false}
     ]
   end
 
