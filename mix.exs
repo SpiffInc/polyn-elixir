@@ -1,6 +1,8 @@
 defmodule Polyn.MixProject do
   use Mix.Project
 
+  @github "https://github.com/SpiffInc/polyn-elixir"
+
   def version, do: "0.1.0"
 
   def project do
@@ -13,11 +15,22 @@ defmodule Polyn.MixProject do
       deps: deps(),
       aliases: aliases(),
       name: "Polyn",
-      source_url: "https://github.com/SpiffInc/polyn-elixir",
+      source_url: @github,
       docs: [
         extras: ["README.md"],
         api_reference: false,
         main: "README.md"
+      ],
+      package: [
+        description: "Polyn framework for maintaining consistent event-based messages",
+        licenses: ["Apache-2.0"],
+        links: %{
+          "GitHub" => @github
+        },
+        maintainers: [
+          "Brandyn Bennett",
+          "Michael Ries"
+        ]
       ]
     ]
   end
