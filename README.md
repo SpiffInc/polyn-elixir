@@ -64,14 +64,24 @@ config :polyn, :source_root, "orders.payments"
 
 Use `Polyn.pub/4` to publish new events to the server
 
-### Simple Message Consumption
+### Simple Stream Consumption
 
 If you have use case that doesn't require batching or concurrency you can use `Polyn.PullConsumer` to receive messages one at a time
 
-### Complex Message Consumption
+### Complex Stream Consumption
 
 If you have a complex use case requiring batching or concurrency you should use the
 `OffBroadway.Polyn.Producer` to create a data pipeline for your messages.
+
+### Vanilla NATS Subscription
+
+If there are events you want to subscribe to that are more ephemeral or don't need
+JetStream functionality you can use the `Polyn.Subscriber` module to setup a process
+to subscribe and handle those events
+
+### Request-Reply
+
+You can use `Polyn.request/4` to a do a [psuedo-synchronous request](https://docs.nats.io/nats-concepts/core-nats/reqreply). You can subscribe to an event using a `Polyn.Subscriber` and reply using `Polyn.reply/5`. Both your request and your reply will need schema definitions and will be validated against them.
 
 ## Installation
 
@@ -85,6 +95,11 @@ def deps do
   ]
 end
 ```
+
+### Optional Broadway Dependency
+
+To use the `OffBroadway.Polyn.Producer` you'll also need to add a `Broadway` as a
+dependency
 
 ## Documentation
 
