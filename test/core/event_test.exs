@@ -19,7 +19,7 @@ defmodule Polyn.EventTest do
   end
 
   test "new/1 adds polyn_version" do
-    assert %Event{polynclient: %{version: version}} = Event.new([])
+    assert %Event{polyndata: %{clientversion: version}} = Event.new([])
     assert version == "#{Application.spec(:polyn, :vsn)}"
   end
 

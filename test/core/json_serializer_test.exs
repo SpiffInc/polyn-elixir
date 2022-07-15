@@ -122,6 +122,13 @@ defmodule Polyn.Serializers.JSONTest do
       assert message =~ "Property: `#/data/foo` - Type mismatch. Expected Integer but got String."
     end
 
+    test "error if data isn't cloudevent" do
+      {:error, message} = JSON.deserialize("123", @conn_name, store_name: @store_name)
+
+      assert message =~ "Polyn events need to follow the CloudEvent spec"
+      assert message =~ "Expected Object but got Integer"
+    end
+
     test "error if payload is not decodeable" do
       assert {:error, message} = JSON.deserialize("foo", @conn_name, store_name: @store_name)
 
@@ -175,10 +182,10 @@ defmodule Polyn.Serializers.JSONTest do
                "source" => "test",
                "time" => ^now,
                "polyntrace" => [],
-               "polynclient" => %{
-                 "lang" => "elixir",
-                 "langversion" => ^langversion,
-                 "version" => ^version
+               "polyndata" => %{
+                 "clientlang" => "elixir",
+                 "clientlangversion" => ^langversion,
+                 "clientversion" => ^version
                },
                "data" => nil,
                "datacontenttype" => "application/json"

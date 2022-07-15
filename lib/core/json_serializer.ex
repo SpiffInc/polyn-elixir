@@ -61,23 +61,23 @@ defmodule Polyn.Serializers.JSON do
   @spec serialize!(event :: Polyn.Event.t(), conn :: Gnat.t()) :: String.t()
   def serialize!(%Event{} = event, conn, opts \\ []) do
     Map.from_struct(event)
-    |> Enum.reduce(%{}, fn field, acc ->
-      serialize_field(acc, field)
-    end)
     |> add_datacontenttype()
+    |> atom_keys_to_strings()
     |> validate!(conn, opts)
     |> Jason.encode!()
   end
 
-  defp serialize_field(data, {key, value}) do
-    Map.put(data, Atom.to_string(key), value)
-  end
-
-  defp add_datacontenttype(%{"datacontenttype" => nil} = json) do
-    Map.put(json, "datacontenttype", "application/json")
+  defp add_datacontenttype(%{datacontenttype: nil} = json) do
+    Map.put(json, :datacontenttype, "application/json")
   end
 
   defp add_datacontenttype(json), do: json
+
+  # The validator lib requires that all map keys be strings
+  defp atom_keys_to_strings(data) do
+    Jason.encode!(data)
+    |> Jason.decode!()
+  end
 
   defp validate!(json, conn, opts) do
     case validate(json, conn, opts) do
@@ -101,12 +101,25 @@ defmodule Polyn.Serializers.JSON do
     end
   end
 
-  # We want to make sure the json even looks like a CloudEvent
-  # and isn't some other datatype that can't even be parsed
-  defp validate_cloud_event(json) when is_map(json), do: :ok
-
+  # We want to make sure the json looks like a CloudEvent
+  # and isn't some other datatype that can't even be parsed.
+  # This is important for protecting against times when services use
+  # a vanilla Gnat.pub or isn't publishing events through Polyn for
+  # some other reason
   defp validate_cloud_event(json) do
-    {:error, ["Polyn events need to follow the CloudEvent spec, got #{inspect(json)}"]}
+    schema =
+      Application.app_dir(:polyn, "priv/polyn/cloud_event_schema.json")
+      |> File.read!()
+      |> Jason.decode!()
+      |> ExJsonSchema.Schema.resolve()
+
+    case ExJsonSchema.Validator.validate(schema, json) do
+      :ok ->
+        :ok
+
+      {:error, json_errors} ->
+        {:error, format_schema_validation_errors(json_errors)}
+    end
   end
 
   defp get_schema(conn, type, opts) do
@@ -144,11 +157,14 @@ defmodule Polyn.Serializers.JSON do
         :ok
 
       {:error, json_errors} ->
-        {:error,
-         Enum.map(json_errors, fn {message, property_path} ->
-           "Property: `#{property_path}` - #{message}"
-         end)}
+        {:error, format_schema_validation_errors(json_errors)}
     end
+  end
+
+  defp format_schema_validation_errors(json_errors) do
+    Enum.map(json_errors, fn {message, property_path} ->
+      "Property: `#{property_path}` - #{message}"
+    end)
   end
 
   defp handle_errors(errors, json) when is_map(json) do
@@ -157,7 +173,11 @@ defmodule Polyn.Serializers.JSON do
     Enum.join(errors, "\n")
   end
 
-  defp handle_errors(errors, _json), do: Enum.join(errors, "\n")
+  defp handle_errors(errors, json) do
+    errors = add_error(errors, "Polyn events need to follow the CloudEvent spec")
+    errors = errors ++ ["Message received: #{inspect(json)}"]
+    Enum.join(errors, "\n")
+  end
 
   defp add_error(errors, error) do
     [error | errors]
