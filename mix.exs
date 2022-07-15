@@ -19,7 +19,7 @@ defmodule Polyn.MixProject do
       docs: [
         extras: ["README.md"],
         api_reference: false,
-        main: "README.md"
+        main: "readme"
       ],
       package: [
         description: "Polyn framework for maintaining consistent event-based messages",

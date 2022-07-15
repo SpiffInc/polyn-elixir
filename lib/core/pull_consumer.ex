@@ -29,7 +29,7 @@ defmodule Polyn.PullConsumer do
 
   ## ACK actions
 
-  See `Jetstream.PullConsumer.handle_message/2` for available options
+  See `c:Jetstream.PullConsumer.handle_message/2` for available options
 
   ## Example
 
