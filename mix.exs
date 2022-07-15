@@ -54,7 +54,7 @@ defmodule Polyn.MixProject do
       {:uuid, "~> 1.1"},
       {:mox, "~> 1.0", only: :test},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
-      {:jetstream, git: "https://github.com/mmmries/jetstream"},
+      {:jetstream, "~> 0.0.1"},
       {:ex_doc, "~> 0.28", only: :dev, runtime: false}
     ]
   end
