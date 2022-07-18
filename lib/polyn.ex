@@ -8,16 +8,36 @@ defmodule Polyn do
   alias Polyn.Event
   alias Polyn.Serializers.JSON
 
+  @typedoc """
+  Options you can pass to most `Polyn` module functions
+
+  * `:source` - The `source` of the event. By default will be the `domain` combined with the
+  `source_root`
+  * `:triggered_by` - The event that triggered this one. Will use information from the event to build
+  up the `polyntrace` data
+  """
   @type polyn_options ::
           {:store_name, binary()}
           | {:source, binary()}
           | {:triggered_by, Event.t()}
 
+  @typedoc """
+  Options for publishing events. See `Gnat.pub/4` for more info
+
+  * `:headers` - Headers to include in the message
+  * `:reply_to` - Subject to send a response to
+  """
   @type pub_options ::
           polyn_options()
           | {:headers, Gnat.headers()}
           | {:reply_to, binary()}
 
+  @typedoc """
+  Options for publishing events. See `Gnat.request/4` for more info
+
+  * `:headers` - Headers to include in the message
+  * `:receive_timeout` - How long to wait for a response
+  """
   @type req_options ::
           polyn_options()
           | {:headers, Gnat.headers()}

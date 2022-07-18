@@ -1,6 +1,8 @@
 defmodule Polyn.MixProject do
   use Mix.Project
 
+  @github "https://github.com/SpiffInc/polyn-elixir"
+
   def version, do: "0.1.0"
 
   def project do
@@ -11,7 +13,25 @@ defmodule Polyn.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      aliases: aliases()
+      aliases: aliases(),
+      name: "Polyn",
+      source_url: @github,
+      docs: [
+        extras: ["README.md"],
+        api_reference: false,
+        main: "readme"
+      ],
+      package: [
+        description: "Polyn framework for maintaining consistent event-based messages",
+        licenses: ["Apache-2.0"],
+        links: %{
+          "GitHub" => @github
+        },
+        maintainers: [
+          "Brandyn Bennett",
+          "Michael Ries"
+        ]
+      ]
     ]
   end
 
@@ -34,9 +54,8 @@ defmodule Polyn.MixProject do
       {:uuid, "~> 1.1"},
       {:mox, "~> 1.0", only: :test},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
-      {:jetstream, git: "https://github.com/mmmries/jetstream"}
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
+      {:jetstream, "~> 0.0.1"},
+      {:ex_doc, "~> 0.28", only: :dev, runtime: false}
     ]
   end
 

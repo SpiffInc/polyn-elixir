@@ -1,9 +1,9 @@
 defmodule Polyn.PullConsumer do
   @moduledoc """
   Use `Polyn.PullConsumer` to connect and process messages from an existing [NATS Consumer](https://docs.nats.io/nats-concepts/jetstream/consumers)
-  that was setup with Polyn CLI. This module is a wrapper around `Jetstream.PullConsumer` that
-  does schema validation with the received messages. This type of Consumer is meant for simple
-  use cases that don't involve concurrency or batching.
+  that was setup with [Polyn CLI](https://github.com/SpiffInc/polyn-cli). This module is a
+  wrapper around `Jetstream.PullConsumer` that does schema validation with the received messages.
+  This type of Consumer is meant for simple use cases that don't involve concurrency or batching.
   """
 
   use Jetstream.PullConsumer
@@ -24,12 +24,12 @@ defmodule Polyn.PullConsumer do
   @doc """
   Invoked to synchronously process a message pulled by the consumer.
   Depending on the value it returns, the acknowledgement is or is not sent.
-  Polyn will deserialize the message body into an `Polyn.Event` struct and use
+  Polyn will deserialize the message body into a `Polyn.Event` struct and use
   that as the first argument, followed by the original message, follwed by the state.
 
   ## ACK actions
 
-  See `Jetstream.PullConsumer.handle_message/2` for available options
+  See `c:Jetstream.PullConsumer.handle_message/2` for available options
 
   ## Example
 

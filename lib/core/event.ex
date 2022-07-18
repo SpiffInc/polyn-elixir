@@ -19,6 +19,9 @@ defmodule Polyn.Event do
               clientlangversion: System.build_info().version
             }
 
+  @typedoc """
+  Previous events that led to this one
+  """
   @type polyntrace :: %{
           type: binary(),
           time: binary(),
@@ -26,16 +29,18 @@ defmodule Polyn.Event do
         }
 
   @typedoc """
-  `id` - Identifies the event.
-  `specversion` - The version of the CloudEvents specification which the event uses.
-  `type` - Describes the type of event related to the originating occurrence.
-  `data` - The event payload.
-  `dataschema` - Identifies the schema that data adheres to.
-  `datacontenttype` - Content type of the data value. Must adhere to RFC 2046 format.
-  `source` - Identifies the context in which an event happened.
-  `time` - Timestamp of when the occurrence happened. Must adhere to RFC 3339.
-  `polyntrace` - Previous events that led to this one
-  `polyndata` - Information about the client that produced the event and additional data
+  The Event structure used throughout Polyn.
+
+  * `id` - Identifies the event.
+  * `specversion` - The version of the CloudEvents specification which the event uses.
+  * `type` - Describes the type of event related to the originating occurrence.
+  * `data` - The event payload.
+  * `dataschema` - Identifies the schema that data adheres to.
+  * `datacontenttype` - Content type of the data value. Must adhere to RFC 2046 format.
+  * `source` - Identifies the context in which an event happened.
+  * `time` - Timestamp of when the occurrence happened. Must adhere to RFC 3339.
+  * `polyntrace` - Previous events that led to this one
+  * `polyndata` - Information about the client that produced the event and additional data
   """
   @type t() :: %__MODULE__{
           id: String.t(),

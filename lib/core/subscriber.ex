@@ -56,7 +56,7 @@ defmodule Polyn.Subscriber do
 
   * `:connection_name` - Required, The pid or name of Gnat connection
   * `:event` - Required, The name of the event to subscribe to
-  * `:queue_group - a string that identifies which queue group you want to join
+  * `:queue_group` - a string that identifies which queue group you want to join
 
   Any other passed options will be assumed to be GenServer options
   """

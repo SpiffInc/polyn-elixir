@@ -19,6 +19,46 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
     to the NATS server so that they aren't sent again. They will be marked as `failed` and removed from the pipeline.
     Valid messages that come in a batch with an invalid message will send a NACK response before an error
     is raised so that the NATS server will know they were received but need to be sent again
+
+    ## Example
+
+    ```elixir
+    defmodule MyBroadway do
+      use Broadway
+
+      def start_link(_opts) do
+        Broadway.start_link(
+          __MODULE__,
+          name: MyBroadway,
+          producer: [
+            module: {
+              OffBroadway.Polyn.Producer,
+              connection_name: :gnat,
+              stream_name: "TEST_STREAM",
+              consumer_name: "TEST_CONSUMER"
+            },
+            concurrency: 10
+          ],
+          processors: [
+            default: [concurrency: 10]
+          ],
+          batchers: [
+            example: [
+              concurrency: 5,
+              batch_size: 10,
+              batch_timeout: 2_000
+            ]
+          ]
+        )
+      end
+
+      def handle_message(_processor_name, message, _context) do
+        message
+        |> Message.update_data(&process_data/1)
+        |> Message.put_batcher(:example)
+      end
+    end
+    ```
     """
     use GenStage
 
