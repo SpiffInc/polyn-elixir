@@ -109,8 +109,23 @@ defmodule Polyn.Subscriber do
   end
 
   @impl true
-  def handle_info({:msg, %{body: body} = msg}, state) do
-    event = JSON.deserialize!(body, Keyword.fetch!(state.opts, :connection_name), state.opts)
-    state.module.handle_message(event, msg, state.state)
+  def handle_info({:msg, %{body: body} = msg}, internal_state) do
+    event =
+      JSON.deserialize!(
+        body,
+        Keyword.fetch!(internal_state.opts, :connection_name),
+        internal_state.opts
+      )
+
+    case internal_state.module.handle_message(event, msg, internal_state.state) do
+      {:noreply, state} ->
+        {:noreply, Map.put(internal_state, :state, state)}
+
+      {:noreply, state, other} ->
+        {:noreply, Map.put(internal_state, :state, state), other}
+
+      other ->
+        other
+    end
   end
 end
