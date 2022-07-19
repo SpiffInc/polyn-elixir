@@ -55,6 +55,10 @@ defmodule Polyn.NamingTest do
       assert Naming.validate_event_name("user.created") == :ok
     end
 
+    test "valid names that's alphanumeric and dot separated (3 dots) passes" do
+      assert Naming.validate_event_name("user.created.foo") == :ok
+    end
+
     test "name can't have spaces" do
       assert Naming.validate_event_name("user   created") ==
                {:error, "Event names must be lowercase, alphanumeric and dot separated"}
@@ -89,6 +93,10 @@ defmodule Polyn.NamingTest do
   describe "validate_source_name/1" do
     test "valid name that's alphanumeric and dot separated passes" do
       assert Naming.validate_source_name("user.backend") == :ok
+    end
+
+    test "valid name that's alphanumeric and dot separated (3 dots) passes" do
+      assert Naming.validate_source_name("nats.graphql.proxy") == :ok
     end
 
     test "valid name that's alphanumeric and colon separated passes" do
