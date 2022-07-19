@@ -63,6 +63,16 @@ defmodule Polyn.SubscriberTest do
       {:received_event, %Event{data: %{"name" => "Iroh", "element" => "fire"}},
        %{reply_to: "foo"}}
     )
+
+    Polyn.pub(@conn_name, "subscriber.test.event.v1", %{name: "Toph", element: "earth"},
+      reply_to: "foo",
+      store_name: @store_name
+    )
+
+    assert_receive(
+      {:received_event, %Event{data: %{"name" => "Toph", "element" => "earth"}},
+       %{reply_to: "foo"}}
+    )
   end
 
   @tag capture_log: true
