@@ -92,7 +92,7 @@ defmodule Polyn.Naming do
   """
   @spec validate_event_name(name :: binary()) :: :ok | {:error, binary()}
   def validate_event_name(name) do
-    if String.match?(name, ~r/^[a-z0-9]+(?:\.[a-z0-9]+)?$/) do
+    if String.match?(name, ~r/^[a-z0-9]+(?:\.[a-z0-9]+)*$/) do
       :ok
     else
       {:error, "Event names must be lowercase, alphanumeric and dot separated"}
@@ -115,7 +115,7 @@ defmodule Polyn.Naming do
   """
   @spec validate_source_name(name :: binary()) :: :ok | {:error, binary()}
   def validate_source_name(name) do
-    if String.match?(name, ~r/^[a-z0-9]+(?:(?:\.|\:)[a-z0-9]+)?$/) do
+    if String.match?(name, ~r/^[a-z0-9]+(?:(?:\.|\:)[a-z0-9]+)*$/) do
       :ok
     else
       {:error,
