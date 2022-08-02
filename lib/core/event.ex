@@ -107,7 +107,7 @@ defmodule Polyn.Event do
   def full_source(source) do
     case Naming.validate_source_name(source) do
       :ok ->
-        full_source() <> ":" <> source
+        full_source() <> ":" <> Naming.dot_to_colon(source)
 
       {:error, reason} ->
         raise Polyn.ValidationException, reason

@@ -45,6 +45,10 @@ defmodule Polyn.EventTest do
     assert "com:test:user:backend:orders" == Event.full_source("orders")
   end
 
+  test "full_source/1 replaces dots" do
+    assert "com:test:user:backend:orders:new" == Event.full_source("orders.new")
+  end
+
   test "full_source/1 uses root if nil" do
     assert "com:test:user:backend" == Event.full_source(nil)
   end
