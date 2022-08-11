@@ -122,6 +122,31 @@ defmodule Polyn.Serializers.JSONTest do
       assert message =~ "Property: `#/data/foo` - Type mismatch. Expected Integer but got String."
     end
 
+    test "error if invalid type" do
+      add_schema("user created v1", %{
+        "type" => "object",
+        "properties" => %{
+          "data" => %{"type" => "object", "properties" => %{"foo" => %{"type" => "integer"}}}
+        }
+      })
+
+      now = NaiveDateTime.utc_now() |> NaiveDateTime.to_iso8601()
+
+      {:error, message} =
+        %{
+          id: "foo",
+          specversion: "1.0.1",
+          type: "user created v1",
+          source: "test",
+          time: now,
+          data: %{foo: "bar"}
+        }
+        |> Jason.encode!()
+        |> JSON.deserialize(@conn_name, store_name: @store_name)
+
+      assert message =~ "Event names must be lowercase, alphanumeric and dot separated"
+    end
+
     test "error if data isn't cloudevent" do
       {:error, message} = JSON.deserialize("123", @conn_name, store_name: @store_name)
 

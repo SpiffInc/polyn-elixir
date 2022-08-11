@@ -92,6 +92,7 @@ defmodule Polyn.Serializers.JSON do
   defp validate(json, conn, opts) do
     with :ok <- validate_cloud_event(json),
          {:ok, type} <- get_event_type(json),
+         :ok <- validate_event_type(type),
          {:ok, schema} <- get_schema(conn, type, opts),
          :ok <- validate_schema(schema, json) do
       {:ok, json}
@@ -148,6 +149,13 @@ defmodule Polyn.Serializers.JSON do
 
       type ->
         {:ok, Polyn.Naming.trim_domain_prefix(type)}
+    end
+  end
+
+  defp validate_event_type(type) do
+    case Polyn.Naming.validate_event_type(type) do
+      {:error, reason} -> {:error, [reason]}
+      success -> success
     end
   end
 

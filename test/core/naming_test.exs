@@ -50,43 +50,49 @@ defmodule Polyn.NamingTest do
     end
   end
 
-  describe "validate_event_name/1" do
+  describe "validate_event_type!/1" do
     test "valid names that's alphanumeric and dot separated passes" do
-      assert Naming.validate_event_name("user.created") == :ok
+      assert Naming.validate_event_type!("user.created") == :ok
     end
 
     test "valid names that's alphanumeric and dot separated (3 dots) passes" do
-      assert Naming.validate_event_name("user.created.foo") == :ok
+      assert Naming.validate_event_type!("user.created.foo") == :ok
     end
 
     test "name can't have spaces" do
-      assert Naming.validate_event_name("user   created") ==
-               {:error, "Event names must be lowercase, alphanumeric and dot separated"}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_event_type!("user   created")
+      end)
     end
 
     test "name can't have tabs" do
-      assert Naming.validate_event_name("user\tcreated") ==
-               {:error, "Event names must be lowercase, alphanumeric and dot separated"}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_event_type!("user\tcreated")
+      end)
     end
 
     test "name can't have linebreaks" do
-      assert Naming.validate_event_name("user\n\rcreated") ==
-               {:error, "Event names must be lowercase, alphanumeric and dot separated"}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_event_type!("user\n\rcreated")
+      end)
     end
 
     test "names can't have special characters" do
-      assert Naming.validate_event_name("user:*%[]<>$!@#-_created") ==
-               {:error, "Event names must be lowercase, alphanumeric and dot separated"}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_event_type!("user:*%[]<>$!@#-_created")
+      end)
     end
 
     test "names can't start with a dot" do
-      assert Naming.validate_event_name(".user") ==
-               {:error, "Event names must be lowercase, alphanumeric and dot separated"}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_event_type!(".user")
+      end)
     end
 
     test "names can't end with a dot" do
-      assert Naming.validate_event_name("user.") ==
-               {:error, "Event names must be lowercase, alphanumeric and dot separated"}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_event_type!("user.")
+      end)
     end
   end
 
