@@ -3,7 +3,33 @@ defmodule Polyn.PullConsumer do
   Use `Polyn.PullConsumer` to connect and process messages from an existing [NATS Consumer](https://docs.nats.io/nats-concepts/jetstream/consumers)
   that was setup with [Polyn CLI](https://github.com/SpiffInc/polyn-cli). This module is a
   wrapper around `Jetstream.PullConsumer` that does schema validation with the received messages.
-  This type of Consumer is meant for simple use cases that don't involve concurrency or batching.
+  A key difference that Polyn adds is that the `:consumer_name` will be taken care of for you
+  by using the passed `type` and configured `:source_root`. You can pass `:source` to `start_link/3`
+  to get a more specific `:consumer_name`. This type of Consumer is meant for simple use cases that
+  don't involve concurrency or batching.
+
+  ## Example
+
+      defmodule MyApp.PullConsumer do
+        use Polyn.PullConsumer
+
+        def start_link(arg) do
+          Polyn.PullConsumer.start_link(__MODULE__, arg,
+            connection_name: :gnat,
+            type: "user.created.v1")
+        end
+
+        @impl true
+        def init(_arg) do
+          {:ok, nil}
+        end
+
+        @impl true
+        def handle_message(message, state) do
+          # Do some processing with the message.
+          {:ack, state}
+        end
+      end
   """
 
   use Jetstream.PullConsumer
@@ -17,7 +43,7 @@ defmodule Polyn.PullConsumer do
   See `c:Connection.init/1` for more details.
   """
   @callback init(init_arg :: term) ::
-              {:ok, state :: term(), Jetstream.PullConsumer.connection_options()}
+              {:ok, state :: term()}
               | :ignore
               | {:stop, reason :: any}
 
@@ -46,6 +72,20 @@ defmodule Polyn.PullConsumer do
             ) ::
               {ack_action, new_state}
             when ack_action: :ack | :nack | :term | :noreply, new_state: term()
+
+  @typedoc """
+  Options for starting a Polyn.PullConsumer
+
+  * `:type` - Required. The event type to consume
+  * `:connection_name` - Required. The Gnat connection identifier
+  * `:source` - Optional. More specific name for the consumer to add to the `:source_root`
+  * All other options will be assumed to be GenServer options
+  """
+  @type option ::
+          {:type, binary()}
+          | {:source, binary()}
+          | {:connection_name, Gnat.t()}
+          | GenServer.option()
 
   @doc false
   defmacro __using__(opts) do
@@ -76,8 +116,17 @@ defmodule Polyn.PullConsumer do
   this function does not return until `c:init/1` has returned.
 
   See `GenServer.start_link/3` for more details.
+
+  ## Example
+
+      {:ok, consumer} =
+        Polyn.PullConsumer.start_link(ExamplePullConsumer, %{initial_arg: "foo"},
+          connection_name: :gnat,
+          type: "user.updated.v1",
+          stream: "TEST_STREAM",
+        )
   """
-  @spec start_link(module(), init_arg :: term(), options :: GenServer.options()) ::
+  @spec start_link(module(), init_arg :: term(), options :: [option()]) ::
           GenServer.on_start()
   def start_link(module, init_arg, options \\ []) when is_atom(module) and is_list(options) do
     Jetstream.PullConsumer.start_link(
@@ -92,7 +141,7 @@ defmodule Polyn.PullConsumer do
 
   See `start_link/3` for more information.
   """
-  @spec start(module(), init_arg :: term(), options :: GenServer.options()) ::
+  @spec start(module(), init_arg :: term(), options :: [option()]) ::
           GenServer.on_start()
   def start(module, init_arg, options \\ []) when is_atom(module) and is_list(options) do
     Jetstream.PullConsumer.start(__MODULE__, {initial_state(module, options), init_arg}, options)
@@ -104,10 +153,10 @@ defmodule Polyn.PullConsumer do
   ## Example
 
       {:ok, consumer} =
-        PullConsumer.start_link(ExamplePullConsumer,
+        PullConsumer.start_link(ExamplePullConsumer, %{initial_arg: "foo"},
           connection_name: :gnat,
-          stream_name: "TEST_STREAM",
-          consumer_name: "TEST_CONSUMER"
+          type: "user.updated.v1",
+          stream: "TEST_STREAM",
         )
 
       :ok = PullConsumer.close(consumer)
@@ -121,12 +170,12 @@ defmodule Polyn.PullConsumer do
   @impl Jetstream.PullConsumer
   def init({%{module: module} = internal_state, init_arg}) do
     case module.init(init_arg) do
-      {:ok, state, connection_options} ->
+      {:ok, state} ->
         # Keep the `module` in the internal state so we can know
         # what functions to call
-        internal_state = %{internal_state | state: state, connection_options: connection_options}
+        internal_state = %{internal_state | state: state}
 
-        {:ok, internal_state, connection_options}
+        {:ok, internal_state, connection_options(internal_state)}
 
       other ->
         other
@@ -135,7 +184,7 @@ defmodule Polyn.PullConsumer do
 
   @impl Jetstream.PullConsumer
   def handle_message(message, %{module: module, state: state} = internal_state) do
-    conn = Keyword.fetch!(internal_state.connection_options, :connection_name)
+    conn = Map.fetch!(internal_state, :connection_name)
 
     case JSON.deserialize(message.body, conn, store_name: internal_state.store_name) do
       {:ok, event} ->
@@ -154,7 +203,25 @@ defmodule Polyn.PullConsumer do
   end
 
   defp initial_state(module, opts) do
-    %{module: module, state: nil, store_name: store_name(opts), connection_options: nil}
+    %{
+      module: module,
+      state: nil,
+      store_name: store_name(opts),
+      connection_name: Keyword.fetch!(opts, :connection_name),
+      type: Keyword.fetch!(opts, :type),
+      source: Keyword.get(opts, :source),
+      stream: Keyword.get(opts, :stream)
+    }
+  end
+
+  defp connection_options(%{
+         type: type,
+         source: source,
+         stream: stream,
+         connection_name: connection_name
+       }) do
+    consumer_name = Polyn.Naming.consumer_name(type, source)
+    [connection_name: connection_name, stream_name: stream, consumer_name: consumer_name]
   end
 
   defp store_name(opts) do

@@ -10,21 +10,24 @@ defmodule Polyn.PullConsumerTest do
   @store_name "PULL_CONSUMER_TEST_SCHEMA_STORE"
   @stream_name "PULL_CONSUMER_TEST_STREAM"
   @stream_subjects ["user.created.v1"]
-  @consumer_name "com_test_user_backend_user_created_v1"
+  @consumer_name "user_backend_user_created_v1"
 
   defmodule ExamplePullConsumer do
     use Polyn.PullConsumer
 
     def start_link(init_arg) do
       {store_name, init_arg} = Keyword.pop!(init_arg, :store_name)
-      Polyn.PullConsumer.start_link(__MODULE__, init_arg, store_name: store_name)
+
+      Polyn.PullConsumer.start_link(__MODULE__, init_arg,
+        store_name: store_name,
+        connection_name: :pull_consumer_gnat,
+        stream: "PULL_CONSUMER_TEST_STREAM",
+        type: "user.created.v1"
+      )
     end
 
     def init(init_arg) do
-      {test_pid, connection_options} = Keyword.pop!(init_arg, :test_pid)
-
-      {:ok, %{test_pid: test_pid},
-       Keyword.merge([connection_name: :pull_consumer_gnat], connection_options)}
+      {:ok, %{test_pid: Keyword.fetch!(init_arg, :test_pid)}}
     end
 
     def handle_message(event, _message, state) do
@@ -187,13 +190,7 @@ defmodule Polyn.PullConsumerTest do
   end
 
   defp start_listening_for_messages do
-    start_supervised!(
-      {ExamplePullConsumer,
-       test_pid: self(),
-       stream_name: @stream_name,
-       consumer_name: @consumer_name,
-       store_name: @store_name}
-    )
+    start_supervised!({ExamplePullConsumer, test_pid: self(), store_name: @store_name})
   end
 
   defp add_schema(type, schema) do
