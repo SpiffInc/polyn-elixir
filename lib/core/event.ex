@@ -105,23 +105,13 @@ defmodule Polyn.Event do
   def full_source(nil), do: full_source()
 
   def full_source(source) do
-    case Naming.validate_source_name(source) do
-      :ok ->
-        full_source() <> ":" <> Naming.dot_to_colon(source)
-
-      {:error, reason} ->
-        raise Polyn.ValidationException, reason
-    end
+    Naming.validate_source_name!(source)
+    full_source() <> ":" <> Naming.dot_to_colon(source)
   end
 
   def full_source do
-    case Naming.validate_source_name(source_root()) do
-      :ok ->
-        Naming.dot_to_colon("#{domain()}:#{source_root()}")
-
-      {:error, reason} ->
-        raise Polyn.ValidationException, reason
-    end
+    Naming.validate_source_name!(source_root())
+    Naming.dot_to_colon("#{domain()}:#{source_root()}")
   end
 
   @doc """

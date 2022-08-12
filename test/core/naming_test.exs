@@ -145,8 +145,7 @@ defmodule Polyn.NamingTest do
     end
 
     test "source can't end with a colon" do
-      assert Naming.validate_source_name("user:") ==
-               {:error, source_error("user:")}
+        Naming.validate_source_name!("user:")
     end
   end
 
