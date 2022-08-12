@@ -146,7 +146,54 @@ defmodule Polyn.Naming do
     end
   end
 
+  @doc """
+    Create a consumer name from a source and type. Uses the
+    configured `:source_root` as the prefix. Will include an
+    additional `source` if passed in
+
+    ## Examples
+
+        iex>Polyn.Naming.consumer_name("user.created.v1")
+        "user_backend_user_created_v1"
+
+        iex>Polyn.Naming.consumer_name("user.created.v1", "notifications")
+        "user_backend_notifications_user_created_v1"
+  """
+
+  def consumer_name(type, source \\ nil) do
+    validate_event_type!(type)
+
+    type =
+      trim_domain_prefix(type)
+      |> underscore_name()
+
+    prefix = consumer_prefix(source)
+    "#{prefix}_#{type}"
+  end
+
+  defp consumer_prefix(nil), do: consumer_prefix()
+
+  defp consumer_prefix(source) do
+    root = consumer_prefix()
+    validate_source_name!(source)
+
+    "#{root}_#{underscore_name(source)}"
+  end
+
+  defp consumer_prefix do
+    underscore_name(source_root())
+  end
+
+  defp underscore_name(name) do
+    String.replace(name, ".", "_")
+    |> String.replace(":", "_")
+  end
+
   defp domain do
     Application.fetch_env!(:polyn, :domain)
+  end
+
+  defp source_root do
+    Application.fetch_env!(:polyn, :source_root)
   end
 end

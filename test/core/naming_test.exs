@@ -96,60 +96,98 @@ defmodule Polyn.NamingTest do
     end
   end
 
-  describe "validate_source_name/1" do
+  describe "validate_source_name!/1" do
     test "valid name that's alphanumeric and dot separated passes" do
-      assert Naming.validate_source_name("user.backend") == :ok
+      assert Naming.validate_source_name!("user.backend") == :ok
     end
 
     test "valid name that's alphanumeric and dot separated (3 dots) passes" do
-      assert Naming.validate_source_name("nats.graphql.proxy") == :ok
+      assert Naming.validate_source_name!("nats.graphql.proxy") == :ok
     end
 
     test "valid name that's alphanumeric and colon separated passes" do
-      assert Naming.validate_source_name("user:backend") == :ok
+      assert Naming.validate_source_name!("user:backend") == :ok
     end
 
     test "source can't have spaces" do
-      assert Naming.validate_source_name("user   created") ==
-               {:error, source_error("user   created")}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_source_name!("user   created")
+      end)
     end
 
     test "source can't have tabs" do
-      assert Naming.validate_source_name("user\tcreated") ==
-               {:error, source_error("user\tcreated")}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_source_name!("user\tcreated")
+      end)
     end
 
     test "source can't have linebreaks" do
-      assert Naming.validate_source_name("user\n\rcreated") ==
-               {:error, source_error("user\n\rcreated")}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_source_name!("user\n\rcreated")
+      end)
     end
 
     test "source can't have special characters" do
-      assert Naming.validate_source_name("user:*%[]<>$!@#-_created") ==
-               {:error, source_error("user:*%[]<>$!@#-_created")}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_source_name!("user:*%[]<>$!@#-_created")
+      end)
     end
 
     test "source can't start with a dot" do
-      assert Naming.validate_source_name(".user") ==
-               {:error, source_error(".user")}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_source_name!(".user")
+      end)
     end
 
     test "source can't end with a dot" do
-      assert Naming.validate_source_name("user.") ==
-               {:error, source_error("user.")}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_source_name!("user.")
+      end)
     end
 
     test "source can't start with a colon" do
-      assert Naming.validate_source_name(":user") ==
-               {:error, source_error(":user")}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_source_name!(":user")
+      end)
     end
 
     test "source can't end with a colon" do
+      assert_raise(Polyn.ValidationException, fn ->
         Naming.validate_source_name!("user:")
+      end)
     end
   end
 
-  defp source_error(source) do
-    "Event source must be lowercase, alphanumeric and dot/colon separated, got #{source}"
+  describe "consumer_name/2" do
+    test "raises if event type is invalid" do
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.consumer_name("foo bar")
+      end)
+    end
+
+    test "raises if optional source is invalid" do
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.consumer_name("foo.bar", "my source")
+      end)
+    end
+
+    test "uses source_root by default" do
+      assert Naming.consumer_name("foo.bar.v1") == "user_backend_foo_bar_v1"
+    end
+
+    test "takes optional source" do
+      assert Naming.consumer_name("foo.bar.v1", "my.source") ==
+               "user_backend_my_source_foo_bar_v1"
+    end
+
+    test "takes colon separated source" do
+      assert Naming.consumer_name("foo.bar.v1", "my:source") ==
+               "user_backend_my_source_foo_bar_v1"
+    end
+
+    test "takes domain prefixed type" do
+      assert Naming.consumer_name("com.test.foo.bar.v1", "my:source") ==
+               "user_backend_my_source_foo_bar_v1"
+    end
   end
 end
