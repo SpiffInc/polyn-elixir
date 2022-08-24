@@ -114,6 +114,25 @@ defmodule PolynTest do
 
       assert reply_to == "foo"
     end
+
+    test "includes Nats-Msg-Id header" do
+      add_schema("pub.test.event.v1", %{
+        "type" => "object",
+        "properties" => %{"data" => %{"type" => "string"}}
+      })
+
+      Gnat.sub(@conn_name, self(), "pub.test.event.v1")
+      Polyn.pub(@conn_name, "pub.test.event.v1", "foo", store_name: @store_name, headers: [{"foo", "bar"}])
+
+      msg =
+        receive do
+          {:msg, msg} ->
+            msg
+        end
+
+      data = Jason.decode!(msg.body)
+      assert msg.headers == [{"foo", "bar"}, {"nats-msg-id", data["id"]}]
+    end
   end
 
   describe "reply/5" do
