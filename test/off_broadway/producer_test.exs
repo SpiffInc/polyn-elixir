@@ -130,6 +130,7 @@ defmodule OffBroadway.Polyn.ProducerTest do
   @tag capture_log: true
   test "invalid message is ACKTERM and raises" do
     bad_msg_id = UUID.uuid4()
+
     Gnat.pub(@conn_name, "company.created.v1", """
     {
       "id": "#{bad_msg_id}",

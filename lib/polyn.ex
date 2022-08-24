@@ -69,8 +69,9 @@ defmodule Polyn do
 
     # Ensure accidental message duplication doesn't happen
     # https://docs.nats.io/using-nats/developer/develop_jetstream/model_deep_dive#message-deduplication
-    headers = Keyword.get(opts, :headers, [])
-    |> Enum.concat([{"Nats-Msg-Id", event.id}])
+    headers =
+      Keyword.get(opts, :headers, [])
+      |> Enum.concat([{"Nats-Msg-Id", event.id}])
 
     opts = Keyword.put(opts, :headers, headers)
 

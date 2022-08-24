@@ -122,7 +122,11 @@ defmodule PolynTest do
       })
 
       Gnat.sub(@conn_name, self(), "pub.test.event.v1")
-      Polyn.pub(@conn_name, "pub.test.event.v1", "foo", store_name: @store_name, headers: [{"foo", "bar"}])
+
+      Polyn.pub(@conn_name, "pub.test.event.v1", "foo",
+        store_name: @store_name,
+        headers: [{"foo", "bar"}]
+      )
 
       msg =
         receive do
