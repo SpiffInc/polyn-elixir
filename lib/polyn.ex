@@ -102,7 +102,12 @@ defmodule Polyn do
 
     opts = add_nats_msg_id_header(opts, event)
 
-    case Gnat.request(conn, event_type, JSON.serialize!(event, conn, opts), remove_polyn_opts(opts)) do
+    case Gnat.request(
+           conn,
+           event_type,
+           JSON.serialize!(event, conn, opts),
+           remove_polyn_opts(opts)
+         ) do
       {:ok, message} ->
         {:ok, Map.put(message, :body, JSON.deserialize!(message.body, conn, opts))}
 
