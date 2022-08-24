@@ -67,13 +67,7 @@ defmodule Polyn do
   def pub(conn, event_type, data, opts \\ []) do
     event = build_event(event_type, data, opts)
 
-    # Ensure accidental message duplication doesn't happen
-    # https://docs.nats.io/using-nats/developer/develop_jetstream/model_deep_dive#message-deduplication
-    headers =
-      Keyword.get(opts, :headers, [])
-      |> Enum.concat([{"Nats-Msg-Id", event.id}])
-
-    opts = Keyword.put(opts, :headers, headers)
+    opts = add_nats_msg_id_header(opts, event)
 
     Gnat.pub(conn, event_type, JSON.serialize!(event, conn, opts), remove_polyn_opts(opts))
   end
@@ -104,9 +98,11 @@ defmodule Polyn do
           opts :: list(req_options())
         ) :: {:ok, Gnat.message()} | {:error, :timeout}
   def request(conn, event_type, data, opts \\ []) do
-    event = build_event(event_type, data, opts) |> JSON.serialize!(conn, opts)
+    event = build_event(event_type, data, opts)
 
-    case Gnat.request(event_type, event, remove_polyn_opts(opts)) do
+    opts = add_nats_msg_id_header(opts, event)
+
+    case Gnat.request(conn, event_type, JSON.serialize!(event, conn, opts), remove_polyn_opts(opts)) do
       {:ok, message} ->
         {:ok, Map.put(message, :body, JSON.deserialize!(message.body, conn, opts))}
 
@@ -142,9 +138,11 @@ defmodule Polyn do
         ) ::
           :ok
   def reply(conn, reply_to, event_type, data, opts \\ []) do
-    event = build_event(event_type, data, opts) |> JSON.serialize!(conn, opts)
+    event = build_event(event_type, data, opts)
 
-    Gnat.pub(conn, reply_to, event, remove_polyn_opts(opts))
+    opts = add_nats_msg_id_header(opts, event)
+
+    Gnat.pub(conn, reply_to, JSON.serialize!(event, conn, opts), remove_polyn_opts(opts))
   end
 
   defp build_event(event_type, data, opts) do
@@ -172,5 +170,15 @@ defmodule Polyn do
 
   defp remove_polyn_opts(opts) do
     Keyword.drop(opts, [:source, :triggered_by, :store_name])
+  end
+
+  defp add_nats_msg_id_header(opts, event) do
+    # Ensure accidental message duplication doesn't happen
+    # https://docs.nats.io/using-nats/developer/develop_jetstream/model_deep_dive#message-deduplication
+    headers =
+      Keyword.get(opts, :headers, [])
+      |> Enum.concat([{"Nats-Msg-Id", event.id}])
+
+    Keyword.put(opts, :headers, headers)
   end
 end
