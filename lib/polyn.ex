@@ -65,7 +65,7 @@ defmodule Polyn do
   @spec pub(conn :: Gnat.t(), event_type :: binary(), data :: any(), opts :: list(pub_options())) ::
           :ok
   def pub(conn, event_type, data, opts \\ []) do
-    event = build_event(conn, event_type, data, opts)
+    event = build_event(event_type, data, opts)
 
     # Ensure accidental message duplication doesn't happen
     # https://docs.nats.io/using-nats/developer/develop_jetstream/model_deep_dive#message-deduplication
@@ -104,9 +104,9 @@ defmodule Polyn do
           opts :: list(req_options())
         ) :: {:ok, Gnat.message()} | {:error, :timeout}
   def request(conn, event_type, data, opts \\ []) do
-    event = build_event(conn, event_type, data, opts) |> JSON.serialize!(conn, opts)
+    event = build_event(event_type, data, opts) |> JSON.serialize!(conn, opts)
 
-    case Gnat.request(conn, event_type, event, remove_polyn_opts(opts)) do
+    case Gnat.request(event_type, event, remove_polyn_opts(opts)) do
       {:ok, message} ->
         {:ok, Map.put(message, :body, JSON.deserialize!(message.body, conn, opts))}
 
@@ -142,12 +142,12 @@ defmodule Polyn do
         ) ::
           :ok
   def reply(conn, reply_to, event_type, data, opts \\ []) do
-    event = build_event(conn, event_type, data, opts) |> JSON.serialize!(conn, opts)
+    event = build_event(event_type, data, opts) |> JSON.serialize!(conn, opts)
 
     Gnat.pub(conn, reply_to, event, remove_polyn_opts(opts))
   end
 
-  defp build_event(conn, event_type, data, opts) do
+  defp build_event(event_type, data, opts) do
     Event.new(
       type: Event.full_type(event_type),
       data: data,
