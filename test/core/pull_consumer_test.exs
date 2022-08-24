@@ -21,7 +21,6 @@ defmodule Polyn.PullConsumerTest do
       Polyn.PullConsumer.start_link(__MODULE__, init_arg,
         store_name: store_name,
         connection_name: :pull_consumer_gnat,
-        stream: "PULL_CONSUMER_TEST_STREAM",
         type: "user.created.v1"
       )
     end
