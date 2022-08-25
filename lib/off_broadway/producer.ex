@@ -14,11 +14,15 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
 
     This module wraps `OffBroadway.Jetstream.Producer` and will validate that any messages coming through
     are valid events and conform to the schema for the event. Use the `OffBroadway.Jetstream.Producer` documentation
-    to learn how to use it. The only difference being you will use `OffBroadway.Polyn.Producer`
-    in your `:module` configuration instead of the Jetsteram one. Invalid messages will send an ACKTERM
+    to learn how to use it. One difference is that you will use `OffBroadway.Polyn.Producer`
+    in your `:module` configuration instead of the Jetstream one. Invalid messages will send an ACKTERM
     to the NATS server so that they aren't sent again. They will be marked as `failed` and removed from the pipeline.
     Valid messages that come in a batch with an invalid message will send a NACK response before an error
     is raised so that the NATS server will know they were received but need to be sent again
+
+    Another key difference that Polyn adds is that the `:consumer_name` will be taken care of for you
+    by using the passed `type` and configured `:source_root`. You can pass in a `:source` to `:module`
+    to get a more specific `:consumer_name`.
 
     ## Example
 
@@ -34,8 +38,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
             module: {
               OffBroadway.Polyn.Producer,
               connection_name: :gnat,
-              stream_name: "TEST_STREAM",
-              consumer_name: "TEST_CONSUMER"
+              type: "user.created.v1"
             },
             concurrency: 10
           ],
@@ -80,6 +83,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
 
     @impl true
     def init(opts) do
+      opts = add_consumer_and_stream_name(opts)
       {:producer, state} = OffBroadway.Jetstream.Producer.init(opts)
       state = Map.put(state, :store_name, store_name(opts))
       {:producer, state}
@@ -138,6 +142,17 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
 
     defp store_name(opts) do
       Keyword.get(opts, :store_name, SchemaStore.store_name())
+    end
+
+    defp add_consumer_and_stream_name(opts) do
+      type = Keyword.fetch!(opts, :type)
+      source = Keyword.get(opts, :source)
+      conn = Keyword.get(opts, :connection_name)
+      consumer_name = Polyn.Naming.consumer_name(type, source)
+      stream_name = Polyn.Naming.lookup_stream_name!(conn, type)
+
+      Keyword.put(opts, :stream_name, stream_name)
+      |> Keyword.put(:consumer_name, consumer_name)
     end
   end
 end
