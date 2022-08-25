@@ -65,9 +65,11 @@ defmodule Polyn do
   @spec pub(conn :: Gnat.t(), event_type :: binary(), data :: any(), opts :: list(pub_options())) ::
           :ok
   def pub(conn, event_type, data, opts \\ []) do
-    event = build_event(conn, event_type, data, opts)
+    event = build_event(event_type, data, opts)
 
-    Gnat.pub(conn, event_type, event, remove_polyn_opts(opts))
+    opts = add_nats_msg_id_header(opts, event)
+
+    Gnat.pub(conn, event_type, JSON.serialize!(event, conn, opts), remove_polyn_opts(opts))
   end
 
   @doc """
@@ -96,9 +98,16 @@ defmodule Polyn do
           opts :: list(req_options())
         ) :: {:ok, Gnat.message()} | {:error, :timeout}
   def request(conn, event_type, data, opts \\ []) do
-    event = build_event(conn, event_type, data, opts)
+    event = build_event(event_type, data, opts)
 
-    case Gnat.request(conn, event_type, event, remove_polyn_opts(opts)) do
+    opts = add_nats_msg_id_header(opts, event)
+
+    case Gnat.request(
+           conn,
+           event_type,
+           JSON.serialize!(event, conn, opts),
+           remove_polyn_opts(opts)
+         ) do
       {:ok, message} ->
         {:ok, Map.put(message, :body, JSON.deserialize!(message.body, conn, opts))}
 
@@ -134,12 +143,14 @@ defmodule Polyn do
         ) ::
           :ok
   def reply(conn, reply_to, event_type, data, opts \\ []) do
-    event = build_event(conn, event_type, data, opts)
+    event = build_event(event_type, data, opts)
 
-    Gnat.pub(conn, reply_to, event, remove_polyn_opts(opts))
+    opts = add_nats_msg_id_header(opts, event)
+
+    Gnat.pub(conn, reply_to, JSON.serialize!(event, conn, opts), remove_polyn_opts(opts))
   end
 
-  defp build_event(conn, event_type, data, opts) do
+  defp build_event(event_type, data, opts) do
     Event.new(
       type: Event.full_type(event_type),
       data: data,
@@ -148,7 +159,6 @@ defmodule Polyn do
       datacontenttype: "application/json",
       polyntrace: build_polyntrace(Keyword.get(opts, :triggered_by))
     )
-    |> JSON.serialize!(conn, opts)
   end
 
   defp build_polyntrace(nil), do: []
@@ -165,5 +175,15 @@ defmodule Polyn do
 
   defp remove_polyn_opts(opts) do
     Keyword.drop(opts, [:source, :triggered_by, :store_name])
+  end
+
+  defp add_nats_msg_id_header(opts, event) do
+    # Ensure accidental message duplication doesn't happen
+    # https://docs.nats.io/using-nats/developer/develop_jetstream/model_deep_dive#message-deduplication
+    headers =
+      Keyword.get(opts, :headers, [])
+      |> Enum.concat([{"Nats-Msg-Id", event.id}])
+
+    Keyword.put(opts, :headers, headers)
   end
 end

@@ -65,7 +65,7 @@ defmodule Polyn.PullConsumerTest do
   test "receives a message" do
     Gnat.pub(@conn_name, "user.created.v1", """
     {
-      "id": "abc",
+      "id": "#{UUID.uuid4()}",
       "source": "com.test.foo",
       "type": "com.test.user.created.v1",
       "specversion": "1.0.1",
@@ -79,7 +79,7 @@ defmodule Polyn.PullConsumerTest do
 
     Gnat.pub(@conn_name, "user.created.v1", """
     {
-      "id": "abc",
+      "id": "#{UUID.uuid4()}",
       "source": "com.test.foo",
       "type": "com.test.user.created.v1",
       "specversion": "1.0.1",
@@ -120,7 +120,7 @@ defmodule Polyn.PullConsumerTest do
   test "errors if payload is invalid" do
     Gnat.pub(@conn_name, "user.created.v1", """
     {
-      "id": "abc",
+      "id": "#{UUID.uuid4()}",
       "source": "com.test.foo",
       "type": "com.test.user.created.v1",
       "specversion": "1.0.1",
@@ -142,7 +142,7 @@ defmodule Polyn.PullConsumerTest do
   test "receives next message after error" do
     Gnat.pub(@conn_name, "user.created.v1", """
     {
-      "id": "abc",
+      "id": "#{UUID.uuid4()}",
       "source": "com.test.foo",
       "type": "com.test.user.created.v1",
       "specversion": "1.0.1",
@@ -156,7 +156,7 @@ defmodule Polyn.PullConsumerTest do
 
     Gnat.pub(@conn_name, "user.created.v1", """
     {
-      "id": "abc",
+      "id": "#{UUID.uuid4()}",
       "source": "com.test.foo",
       "type": "com.test.user.created.v1",
       "specversion": "1.0.1",

@@ -82,7 +82,7 @@ defmodule Polyn.SubscriberTest do
 
     Gnat.pub(@conn_name, "subscriber.test.event.v1", """
     {
-      "id": "abc",
+      "id": "#{UUID.uuid4()}",
       "source": "com.test.foo",
       "type": "com.test.subscriber.test.event.v1",
       "specversion": "1.0.1",

@@ -72,7 +72,7 @@ defmodule OffBroadway.Polyn.ProducerTest do
   test "valid messages are converted to Event structs" do
     Gnat.pub(@conn_name, "company.created.v1", """
     {
-      "id": "abc",
+      "id": "#{UUID.uuid4()}",
       "source": "com.test.foo",
       "type": "com.test.company.created.v1",
       "specversion": "1.0.1",
@@ -86,7 +86,7 @@ defmodule OffBroadway.Polyn.ProducerTest do
 
     Gnat.pub(@conn_name, "company.created.v1", """
     {
-      "id": "abc",
+      "id": "#{UUID.uuid4()}",
       "source": "com.test.foo",
       "type": "com.test.company.created.v1",
       "specversion": "1.0.1",
@@ -129,9 +129,11 @@ defmodule OffBroadway.Polyn.ProducerTest do
 
   @tag capture_log: true
   test "invalid message is ACKTERM and raises" do
+    bad_msg_id = UUID.uuid4()
+
     Gnat.pub(@conn_name, "company.created.v1", """
     {
-      "id": "abc",
+      "id": "#{bad_msg_id}",
       "source": "com.test.foo",
       "type": "com.test.company.created.v1",
       "specversion": "1.0.1",
@@ -144,7 +146,7 @@ defmodule OffBroadway.Polyn.ProducerTest do
 
     Gnat.pub(@conn_name, "company.created.v1", """
     {
-      "id": "abc",
+      "id": "#{UUID.uuid4()}",
       "source": "com.test.foo",
       "type": "com.test.company.created.v1",
       "specversion": "1.0.1",
@@ -169,7 +171,7 @@ defmodule OffBroadway.Polyn.ProducerTest do
     {:DOWN, _ref, :process, _pid, {%{message: message}, _stack}} =
       assert_receive({:DOWN, ^ref, :process, ^pid, {%Polyn.ValidationException{}, _stack}})
 
-    assert message =~ "Polyn event abc from com.test.foo is not valid"
+    assert message =~ "Polyn event #{bad_msg_id} from com.test.foo is not valid"
 
     refute_receive(
       {:received_event,

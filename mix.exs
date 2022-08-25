@@ -3,7 +3,7 @@ defmodule Polyn.MixProject do
 
   @github "https://github.com/SpiffInc/polyn-elixir"
 
-  def version, do: "0.1.2"
+  def version, do: "0.1.3"
 
   def project do
     [
@@ -11,6 +11,7 @@ defmodule Polyn.MixProject do
       version: version(),
       elixir: "~> 1.12",
       elixirc_paths: elixirc_paths(Mix.env()),
+      elixirc_options: [debug_info: Mix.env() == :dev],
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       aliases: aliases(),
