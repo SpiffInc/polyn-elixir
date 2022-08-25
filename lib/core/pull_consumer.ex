@@ -229,10 +229,10 @@ defmodule Polyn.PullConsumer do
         stream
 
       {:error, error} ->
-        raise Polyn.SchemaException, error
+        raise Polyn.StreamException, error
 
       _ ->
-        raise Polyn.SchemaException, "Could not find any streams for type #{type}"
+        raise Polyn.StreamException, "Could not find any streams for type #{type}"
     end
   end
 
