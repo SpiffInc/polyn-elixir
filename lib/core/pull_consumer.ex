@@ -219,21 +219,8 @@ defmodule Polyn.PullConsumer do
          connection_name: connection_name
        }) do
     consumer_name = Polyn.Naming.consumer_name(type, source)
-    stream = lookup_stream_name(connection_name, type)
+    stream = Polyn.Naming.lookup_stream_name!(connection_name, type)
     [connection_name: connection_name, stream_name: stream, consumer_name: consumer_name]
-  end
-
-  defp lookup_stream_name(conn, type) do
-    case Jetstream.API.Stream.list(conn, subject: type) do
-      {:ok, %{streams: [stream]}} ->
-        stream
-
-      {:error, error} ->
-        raise Polyn.StreamException, error
-
-      _ ->
-        raise Polyn.StreamException, "Could not find any streams for type #{type}"
-    end
   end
 
   defp store_name(opts) do

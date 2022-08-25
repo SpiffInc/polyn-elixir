@@ -1,7 +1,10 @@
 defmodule Polyn.NamingTest do
-  use ExUnit.Case, async: true
+  use Polyn.ConnCase, async: true
 
   alias Polyn.Naming
+
+  @conn_name :naming_test
+  @moduletag with_gnat: @conn_name
 
   test "dot_to_colon/1" do
     assert "com:acme:user:created:v1:schema:v1" ==
@@ -188,6 +191,28 @@ defmodule Polyn.NamingTest do
     test "takes domain prefixed type" do
       assert Naming.consumer_name("com.test.foo.bar.v1", "my:source") ==
                "user_backend_my_source_foo_bar_v1"
+    end
+  end
+
+  describe "lookup_stream_name!/2" do
+    test "finds stream name" do
+      stream = %Jetstream.API.Stream{name: "FOO", subjects: ["foo.>"]}
+      {:ok, _info} = Jetstream.API.Stream.create(@conn_name, stream)
+
+      assert "FOO" = Naming.lookup_stream_name!(@conn_name, "foo.bar")
+
+      Jetstream.API.Stream.delete(@conn_name, "FOO")
+    end
+
+    test "raises if stream doesn't exist for event" do
+      stream = %Jetstream.API.Stream{name: "FOO", subjects: ["foo.>"]}
+      {:ok, _info} = Jetstream.API.Stream.create(@conn_name, stream)
+
+      assert_raise(Polyn.StreamException, fn ->
+        Naming.lookup_stream_name!(@conn_name, "other.subject")
+      end)
+
+      Jetstream.API.Stream.delete(@conn_name, "FOO")
     end
   end
 end

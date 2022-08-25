@@ -189,6 +189,30 @@ defmodule Polyn.Naming do
     |> String.replace(":", "_")
   end
 
+  @doc """
+  Lookup the name of a stream for a given event type
+
+  ## Examples
+
+        iex>Polyn.Naming.lookup_stream_name!(:gnat, "user.created.v1")
+        "USERS"
+
+        iex>Polyn.Naming.lookup_stream_name!(:gnat, "foo.v1")
+        Polyn.StreamException
+  """
+  def lookup_stream_name!(conn, type) do
+    case Jetstream.API.Stream.list(conn, subject: type) do
+      {:ok, %{streams: [stream]}} ->
+        stream
+
+      {:error, error} ->
+        raise Polyn.StreamException, error
+
+      _ ->
+        raise Polyn.StreamException, "Could not find any streams for type #{type}"
+    end
+  end
+
   defp domain do
     Application.fetch_env!(:polyn, :domain)
   end
