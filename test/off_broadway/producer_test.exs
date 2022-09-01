@@ -10,7 +10,7 @@ defmodule OffBroadway.Polyn.ProducerTest do
   @store_name "BROADWAY_PRODUCER_TEST_SCHEMA_STORE"
   @stream_name "BROADWAY_PRODUCER_TEST_STREAM"
   @stream_subjects ["company.created.v1"]
-  @consumer_name "com_test_company_backend_company_created_v1"
+  @consumer_name "user_backend_company_created_v1"
 
   setup do
     SchemaStore.create_store(@conn_name, name: @store_name)
@@ -51,8 +51,7 @@ defmodule OffBroadway.Polyn.ProducerTest do
           module: {
             OffBroadway.Polyn.Producer,
             connection_name: :broadway_producer_test,
-            stream_name: "BROADWAY_PRODUCER_TEST_STREAM",
-            consumer_name: "com_test_company_backend_company_created_v1",
+            type: "company.created.v1",
             store_name: "BROADWAY_PRODUCER_TEST_SCHEMA_STORE"
           }
         ],

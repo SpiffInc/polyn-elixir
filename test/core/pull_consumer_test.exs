@@ -9,22 +9,24 @@ defmodule Polyn.PullConsumerTest do
   @moduletag with_gnat: @conn_name
   @store_name "PULL_CONSUMER_TEST_SCHEMA_STORE"
   @stream_name "PULL_CONSUMER_TEST_STREAM"
-  @stream_subjects ["user.created.v1"]
-  @consumer_name "com_test_user_backend_user_created_v1"
+  @stream_subjects ["pull.consumer.test.event.v1"]
+  @consumer_name "user_backend_pull_consumer_test_event_v1"
 
   defmodule ExamplePullConsumer do
     use Polyn.PullConsumer
 
     def start_link(init_arg) do
       {store_name, init_arg} = Keyword.pop!(init_arg, :store_name)
-      Polyn.PullConsumer.start_link(__MODULE__, init_arg, store_name: store_name)
+
+      Polyn.PullConsumer.start_link(__MODULE__, init_arg,
+        store_name: store_name,
+        connection_name: :pull_consumer_gnat,
+        type: "pull.consumer.test.event.v1"
+      )
     end
 
     def init(init_arg) do
-      {test_pid, connection_options} = Keyword.pop!(init_arg, :test_pid)
-
-      {:ok, %{test_pid: test_pid},
-       Keyword.merge([connection_name: :pull_consumer_gnat], connection_options)}
+      {:ok, %{test_pid: Keyword.fetch!(init_arg, :test_pid)}}
     end
 
     def handle_message(event, _message, state) do
@@ -36,7 +38,7 @@ defmodule Polyn.PullConsumerTest do
   setup do
     SchemaStore.create_store(@conn_name, name: @store_name)
 
-    add_schema("user.created.v1", %{
+    add_schema("pull.consumer.test.event.v1", %{
       "type" => "object",
       "required" => ["type"],
       "properties" => %{
@@ -50,11 +52,8 @@ defmodule Polyn.PullConsumerTest do
       }
     })
 
-    stream = %Stream{name: @stream_name, subjects: @stream_subjects}
-    {:ok, _response} = Stream.create(@conn_name, stream)
-
-    consumer = %Consumer{stream_name: @stream_name, durable_name: @consumer_name}
-    {:ok, _response} = Consumer.create(@conn_name, consumer)
+    setup_stream()
+    setup_consumer()
 
     on_exit(fn ->
       cleanup()
@@ -63,13 +62,12 @@ defmodule Polyn.PullConsumerTest do
 
   @tag capture_log: true
   test "receives a message" do
-    Gnat.pub(@conn_name, "user.created.v1", """
+    Gnat.pub(@conn_name, "pull.consumer.test.event.v1", """
     {
       "id": "#{UUID.uuid4()}",
       "source": "com.test.foo",
-      "type": "com.test.user.created.v1",
+      "type": "com.test.pull.consumer.test.event.v1",
       "specversion": "1.0.1",
-      "type": "com.test.user.created.v1",
       "data": {
         "name": "Toph",
         "element": "earth"
@@ -77,13 +75,12 @@ defmodule Polyn.PullConsumerTest do
     }
     """)
 
-    Gnat.pub(@conn_name, "user.created.v1", """
+    Gnat.pub(@conn_name, "pull.consumer.test.event.v1", """
     {
       "id": "#{UUID.uuid4()}",
       "source": "com.test.foo",
-      "type": "com.test.user.created.v1",
       "specversion": "1.0.1",
-      "type": "com.test.user.created.v1",
+      "type": "com.test.pull.consumer.test.event.v1",
       "data": {
         "name": "Katara",
         "element": "water"
@@ -96,7 +93,7 @@ defmodule Polyn.PullConsumerTest do
     assert_receive(
       {:received_event,
        %Event{
-         type: "com.test.user.created.v1",
+         type: "com.test.pull.consumer.test.event.v1",
          data: %{
            "name" => "Katara",
            "element" => "water"
@@ -107,7 +104,7 @@ defmodule Polyn.PullConsumerTest do
     assert_receive(
       {:received_event,
        %Event{
-         type: "com.test.user.created.v1",
+         type: "com.test.pull.consumer.test.event.v1",
          data: %{
            "name" => "Toph",
            "element" => "earth"
@@ -118,13 +115,12 @@ defmodule Polyn.PullConsumerTest do
 
   @tag capture_log: true
   test "errors if payload is invalid" do
-    Gnat.pub(@conn_name, "user.created.v1", """
+    Gnat.pub(@conn_name, "pull.consumer.test.event.v1", """
     {
       "id": "#{UUID.uuid4()}",
       "source": "com.test.foo",
-      "type": "com.test.user.created.v1",
       "specversion": "1.0.1",
-      "type": "com.test.user.created.v1",
+      "type": "com.test.pull.consumer.test.event.v1",
       "data": {
         "name": 123,
         "element": true
@@ -140,13 +136,12 @@ defmodule Polyn.PullConsumerTest do
 
   @tag capture_log: true
   test "receives next message after error" do
-    Gnat.pub(@conn_name, "user.created.v1", """
+    Gnat.pub(@conn_name, "pull.consumer.test.event.v1", """
     {
       "id": "#{UUID.uuid4()}",
       "source": "com.test.foo",
-      "type": "com.test.user.created.v1",
       "specversion": "1.0.1",
-      "type": "com.test.user.created.v1",
+      "type": "com.test.pull.consumer.test.event.v1",
       "data": {
         "name": 123,
         "element": true
@@ -154,13 +149,12 @@ defmodule Polyn.PullConsumerTest do
     }
     """)
 
-    Gnat.pub(@conn_name, "user.created.v1", """
+    Gnat.pub(@conn_name, "pull.consumer.test.event.v1", """
     {
       "id": "#{UUID.uuid4()}",
       "source": "com.test.foo",
-      "type": "com.test.user.created.v1",
+      "type": "com.test.pull.consumer.test.event.v1",
       "specversion": "1.0.1",
-      "type": "com.test.user.created.v1",
       "data": {
         "name": "Toph",
         "element": "earth"
@@ -176,7 +170,7 @@ defmodule Polyn.PullConsumerTest do
     assert_receive(
       {:received_event,
        %Event{
-         type: "com.test.user.created.v1",
+         type: "com.test.pull.consumer.test.event.v1",
          data: %{
            "name" => "Toph",
            "element" => "earth"
@@ -186,18 +180,53 @@ defmodule Polyn.PullConsumerTest do
     )
   end
 
+  @tag capture_log: true
+  test "errors if stream doesn't exist" do
+    Stream.delete(@conn_name, @stream_name)
+
+    Gnat.pub(@conn_name, "pull.consumer.test.event.v1", """
+    {
+      "id": "abc",
+      "source": "com.test.foo",
+      "type": "com.test.pull.consumer.test.event.v1",
+      "specversion": "1.0.1",
+      "data": {
+        "name": "Toph",
+        "element": "earth"
+      }
+    }
+    """)
+
+    # Catching runtime error because that's what happen when supervisor can't start a child_spec
+    %{message: message} =
+      assert_raise(RuntimeError, fn ->
+        start_listening_for_messages()
+      end)
+
+    assert message =~ "Polyn.StreamException"
+    assert message =~ "Could not find any streams for type pull.consumer.test.event.v1"
+
+    # recreate these so the cleanup function works
+    setup_stream()
+    setup_consumer()
+  end
+
   defp start_listening_for_messages do
-    start_supervised!(
-      {ExamplePullConsumer,
-       test_pid: self(),
-       stream_name: @stream_name,
-       consumer_name: @consumer_name,
-       store_name: @store_name}
-    )
+    start_supervised!({ExamplePullConsumer, test_pid: self(), store_name: @store_name})
   end
 
   defp add_schema(type, schema) do
     SchemaStore.save(@conn_name, type, schema, name: @store_name)
+  end
+
+  defp setup_stream do
+    stream = %Stream{name: @stream_name, subjects: @stream_subjects}
+    {:ok, _response} = Stream.create(@conn_name, stream)
+  end
+
+  defp setup_consumer do
+    consumer = %Consumer{stream_name: @stream_name, durable_name: @consumer_name}
+    {:ok, _response} = Consumer.create(@conn_name, consumer)
   end
 
   defp cleanup do

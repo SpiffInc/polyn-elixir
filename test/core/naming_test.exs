@@ -1,7 +1,10 @@
 defmodule Polyn.NamingTest do
-  use ExUnit.Case, async: true
+  use Polyn.ConnCase, async: true
 
   alias Polyn.Naming
+
+  @conn_name :naming_test
+  @moduletag with_gnat: @conn_name
 
   test "dot_to_colon/1" do
     assert "com:acme:user:created:v1:schema:v1" ==
@@ -50,101 +53,166 @@ defmodule Polyn.NamingTest do
     end
   end
 
-  describe "validate_event_name/1" do
+  describe "validate_event_type!/1" do
     test "valid names that's alphanumeric and dot separated passes" do
-      assert Naming.validate_event_name("user.created") == :ok
+      assert Naming.validate_event_type!("user.created") == :ok
     end
 
     test "valid names that's alphanumeric and dot separated (3 dots) passes" do
-      assert Naming.validate_event_name("user.created.foo") == :ok
+      assert Naming.validate_event_type!("user.created.foo") == :ok
     end
 
     test "name can't have spaces" do
-      assert Naming.validate_event_name("user   created") ==
-               {:error, "Event names must be lowercase, alphanumeric and dot separated"}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_event_type!("user   created")
+      end)
     end
 
     test "name can't have tabs" do
-      assert Naming.validate_event_name("user\tcreated") ==
-               {:error, "Event names must be lowercase, alphanumeric and dot separated"}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_event_type!("user\tcreated")
+      end)
     end
 
     test "name can't have linebreaks" do
-      assert Naming.validate_event_name("user\n\rcreated") ==
-               {:error, "Event names must be lowercase, alphanumeric and dot separated"}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_event_type!("user\n\rcreated")
+      end)
     end
 
     test "names can't have special characters" do
-      assert Naming.validate_event_name("user:*%[]<>$!@#-_created") ==
-               {:error, "Event names must be lowercase, alphanumeric and dot separated"}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_event_type!("user:*%[]<>$!@#-_created")
+      end)
     end
 
     test "names can't start with a dot" do
-      assert Naming.validate_event_name(".user") ==
-               {:error, "Event names must be lowercase, alphanumeric and dot separated"}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_event_type!(".user")
+      end)
     end
 
     test "names can't end with a dot" do
-      assert Naming.validate_event_name("user.") ==
-               {:error, "Event names must be lowercase, alphanumeric and dot separated"}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_event_type!("user.")
+      end)
     end
   end
 
-  describe "validate_source_name/1" do
+  describe "validate_source_name!/1" do
     test "valid name that's alphanumeric and dot separated passes" do
-      assert Naming.validate_source_name("user.backend") == :ok
+      assert Naming.validate_source_name!("user.backend") == :ok
     end
 
     test "valid name that's alphanumeric and dot separated (3 dots) passes" do
-      assert Naming.validate_source_name("nats.graphql.proxy") == :ok
+      assert Naming.validate_source_name!("nats.graphql.proxy") == :ok
     end
 
     test "valid name that's alphanumeric and colon separated passes" do
-      assert Naming.validate_source_name("user:backend") == :ok
+      assert Naming.validate_source_name!("user:backend") == :ok
     end
 
     test "source can't have spaces" do
-      assert Naming.validate_source_name("user   created") ==
-               {:error, source_error("user   created")}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_source_name!("user   created")
+      end)
     end
 
     test "source can't have tabs" do
-      assert Naming.validate_source_name("user\tcreated") ==
-               {:error, source_error("user\tcreated")}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_source_name!("user\tcreated")
+      end)
     end
 
     test "source can't have linebreaks" do
-      assert Naming.validate_source_name("user\n\rcreated") ==
-               {:error, source_error("user\n\rcreated")}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_source_name!("user\n\rcreated")
+      end)
     end
 
     test "source can't have special characters" do
-      assert Naming.validate_source_name("user:*%[]<>$!@#-_created") ==
-               {:error, source_error("user:*%[]<>$!@#-_created")}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_source_name!("user:*%[]<>$!@#-_created")
+      end)
     end
 
     test "source can't start with a dot" do
-      assert Naming.validate_source_name(".user") ==
-               {:error, source_error(".user")}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_source_name!(".user")
+      end)
     end
 
     test "source can't end with a dot" do
-      assert Naming.validate_source_name("user.") ==
-               {:error, source_error("user.")}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_source_name!("user.")
+      end)
     end
 
     test "source can't start with a colon" do
-      assert Naming.validate_source_name(":user") ==
-               {:error, source_error(":user")}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_source_name!(":user")
+      end)
     end
 
     test "source can't end with a colon" do
-      assert Naming.validate_source_name("user:") ==
-               {:error, source_error("user:")}
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.validate_source_name!("user:")
+      end)
     end
   end
 
-  defp source_error(source) do
-    "Event source must be lowercase, alphanumeric and dot/colon separated, got #{source}"
+  describe "consumer_name/2" do
+    test "raises if event type is invalid" do
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.consumer_name("foo bar")
+      end)
+    end
+
+    test "raises if optional source is invalid" do
+      assert_raise(Polyn.ValidationException, fn ->
+        Naming.consumer_name("foo.bar", "my source")
+      end)
+    end
+
+    test "uses source_root by default" do
+      assert Naming.consumer_name("foo.bar.v1") == "user_backend_foo_bar_v1"
+    end
+
+    test "takes optional source" do
+      assert Naming.consumer_name("foo.bar.v1", "my.source") ==
+               "user_backend_my_source_foo_bar_v1"
+    end
+
+    test "takes colon separated source" do
+      assert Naming.consumer_name("foo.bar.v1", "my:source") ==
+               "user_backend_my_source_foo_bar_v1"
+    end
+
+    test "takes domain prefixed type" do
+      assert Naming.consumer_name("com.test.foo.bar.v1", "my:source") ==
+               "user_backend_my_source_foo_bar_v1"
+    end
+  end
+
+  describe "lookup_stream_name!/2" do
+    test "finds stream name" do
+      stream = %Jetstream.API.Stream{name: "FOO", subjects: ["foo.>"]}
+      {:ok, _info} = Jetstream.API.Stream.create(@conn_name, stream)
+
+      assert "FOO" = Naming.lookup_stream_name!(@conn_name, "foo.bar")
+
+      Jetstream.API.Stream.delete(@conn_name, "FOO")
+    end
+
+    test "raises if stream doesn't exist for event" do
+      stream = %Jetstream.API.Stream{name: "FOO", subjects: ["foo.>"]}
+      {:ok, _info} = Jetstream.API.Stream.create(@conn_name, stream)
+
+      assert_raise(Polyn.StreamException, fn ->
+        Naming.lookup_stream_name!(@conn_name, "other.subject")
+      end)
+
+      Jetstream.API.Stream.delete(@conn_name, "FOO")
+    end
   end
 end

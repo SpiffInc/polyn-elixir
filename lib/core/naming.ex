@@ -84,18 +84,41 @@ defmodule Polyn.Naming do
 
   ## Examples
 
-      iex>Polyn.Naming.validate_event_name("user.created")
+      iex>Polyn.Naming.validate_event_type("user.created")
       :ok
 
-      iex>Polyn.Naming.validate_event_name("user  created")
-      {:error, ["Event names can't have spaces"]}
+      iex>Polyn.Naming.validate_event_type("user  created")
+      {:error, message}
   """
-  @spec validate_event_name(name :: binary()) :: :ok | {:error, binary()}
-  def validate_event_name(name) do
-    if String.match?(name, ~r/^[a-z0-9]+(?:\.[a-z0-9]+)*$/) do
+  @spec validate_event_type(name :: binary()) :: :ok | {:error, binary()}
+  def validate_event_type(type) do
+    if String.match?(type, ~r/^[a-z0-9]+(?:\.[a-z0-9]+)*$/) do
       :ok
     else
       {:error, "Event names must be lowercase, alphanumeric and dot separated"}
+    end
+  end
+
+  @doc """
+  Validate the name of an event, also sometimes called an event `type`.
+  Raises if invalid
+
+  ## Examples
+
+      iex>Polyn.Naming.validate_event_type!("user.created")
+      :ok
+
+      iex>Polyn.Naming.validate_event_type!("user  created")
+      Polyn.ValidationException
+  """
+  @spec validate_event_type!(name :: binary()) :: :ok
+  def validate_event_type!(type) do
+    case validate_event_type(type) do
+      {:error, reason} ->
+        raise Polyn.ValidationException, reason
+
+      success ->
+        success
     end
   end
 
@@ -104,26 +127,97 @@ defmodule Polyn.Naming do
 
   ## Examples
 
-      iex>Polyn.Naming.validate_source_name("user.created")
+      iex>Polyn.Naming.validate_source_name!("user.created")
       :ok
 
-      iex>Polyn.Naming.validate_source_name("user:created")
+      iex>Polyn.Naming.validate_source_name!("user:created")
       :ok
 
-      iex>Polyn.Naming.validate_source_name("user  created")
-      {:error, ["Source names can't have spaces"]}
+      iex>Polyn.Naming.validate_source_name!("user  created")
+      Polyn.ValidationException
   """
-  @spec validate_source_name(name :: binary()) :: :ok | {:error, binary()}
-  def validate_source_name(name) do
+  @spec validate_source_name!(name :: binary()) :: :ok
+  def validate_source_name!(name) do
     if String.match?(name, ~r/^[a-z0-9]+(?:(?:\.|\:)[a-z0-9]+)*$/) do
       :ok
     else
-      {:error,
-       "Event source must be lowercase, alphanumeric and dot/colon separated, got #{name}"}
+      raise Polyn.ValidationException,
+            "Event source must be lowercase, alphanumeric and dot/colon separated, got #{name}"
+    end
+  end
+
+  @doc """
+    Create a consumer name from a source and type. Uses the
+    configured `:source_root` as the prefix. Will include an
+    additional `source` if passed in
+
+    ## Examples
+
+        iex>Polyn.Naming.consumer_name("user.created.v1")
+        "user_backend_user_created_v1"
+
+        iex>Polyn.Naming.consumer_name("user.created.v1", "notifications")
+        "user_backend_notifications_user_created_v1"
+  """
+
+  def consumer_name(type, source \\ nil) do
+    validate_event_type!(type)
+
+    type =
+      trim_domain_prefix(type)
+      |> underscore_name()
+
+    prefix = consumer_prefix(source)
+    "#{prefix}_#{type}"
+  end
+
+  defp consumer_prefix(nil), do: consumer_prefix()
+
+  defp consumer_prefix(source) do
+    root = consumer_prefix()
+    validate_source_name!(source)
+
+    "#{root}_#{underscore_name(source)}"
+  end
+
+  defp consumer_prefix do
+    underscore_name(source_root())
+  end
+
+  defp underscore_name(name) do
+    String.replace(name, ".", "_")
+    |> String.replace(":", "_")
+  end
+
+  @doc """
+  Lookup the name of a stream for a given event type
+
+  ## Examples
+
+        iex>Polyn.Naming.lookup_stream_name!(:gnat, "user.created.v1")
+        "USERS"
+
+        iex>Polyn.Naming.lookup_stream_name!(:gnat, "foo.v1")
+        Polyn.StreamException
+  """
+  def lookup_stream_name!(conn, type) do
+    case Jetstream.API.Stream.list(conn, subject: type) do
+      {:ok, %{streams: [stream]}} ->
+        stream
+
+      {:error, error} ->
+        raise Polyn.StreamException, error
+
+      _ ->
+        raise Polyn.StreamException, "Could not find any streams for type #{type}"
     end
   end
 
   defp domain do
     Application.fetch_env!(:polyn, :domain)
+  end
+
+  defp source_root do
+    Application.fetch_env!(:polyn, :source_root)
   end
 end
