@@ -10,8 +10,8 @@ defmodule Polyn.Nats do
   end
 
   @impl Polyn.NatsBehaviour
-  def sub(conn, subject, opts \\ []) do
-    Gnat.sub(conn, subject, opts)
+  def sub(conn, subscriber, subject, opts \\ []) do
+    Gnat.sub(conn, subscriber, subject, opts)
   end
 
   @impl Polyn.NatsBehaviour
