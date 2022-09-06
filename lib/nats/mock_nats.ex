@@ -19,12 +19,11 @@ defmodule Polyn.MockNats do
   @impl Polyn.NatsBehaviour
   def pub(conn, subject, data, opts \\ []) do
     GenServer.call(conn, {:pub, subject, data, opts})
-    # Gnat.pub(conn, subject, data, opts)
   end
 
   @impl Polyn.NatsBehaviour
-  def sub(conn, subject, opts \\ []) do
-    # Gnat.sub(conn, subject, opts)
+  def sub(conn, subscriber, subject, opts \\ []) do
+    GenServer.call(conn, {:sub, subscriber, subject, opts})
   end
 
   @impl Polyn.NatsBehaviour
@@ -43,18 +42,31 @@ defmodule Polyn.MockNats do
   end
 
   def handle_call({:pub, subject, data, opts}, _from, state) do
-    messages =
-      state.messages ++
-        [
-          %{
-            gnat: self(),
-            topic: subject,
-            body: data,
-            reply_to: Keyword.get(opts, :reply_to),
-            headers: Keyword.get(opts, :headers)
-          }
-        ]
+    msg = %{
+      gnat: self(),
+      topic: subject,
+      body: data,
+      reply_to: Keyword.get(opts, :reply_to),
+      headers: Keyword.get(opts, :headers)
+    }
+
+    messages = state.messages ++ [msg]
+
+    Enum.filter(state.subscribers, &(&1.subject == subject))
+    |> Enum.each(fn sub ->
+      send(sub.subscriber, {:msg, Map.put(msg, :sid, sub.sid)})
+    end)
 
     {:reply, :ok, Map.put(state, :messages, messages)}
+  end
+
+  def handle_call({:sub, subscriber, subject, _opts}, _from, state) do
+    sid = System.unique_integer([:positive])
+
+    subscribers =
+      state.subscribers ++
+        [%{sid: sid, subject: subject, subscriber: subscriber}]
+
+    {:reply, {:ok, sid}, Map.put(state, :subscribers, subscribers)}
   end
 end

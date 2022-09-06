@@ -28,5 +28,12 @@ defmodule Polyn.MockNatsTest do
                }
              ] = MockNats.get_messages(nats)
     end
+
+    test "subscribers receive message instanstly" do
+      nats = start_supervised!(MockNats)
+      assert {:ok, sid} = MockNats.sub(nats, self(), "foo")
+      assert :ok = MockNats.pub(nats, "foo", "bar")
+      assert_receive({:msg, %{topic: "foo", body: "bar", sid: ^sid}})
+    end
   end
 end
