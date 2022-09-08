@@ -18,4 +18,9 @@ defmodule Polyn.Nats do
   def request(conn, subject, data, opts \\ []) do
     Gnat.request(conn, subject, data, opts)
   end
+
+  @impl Polyn.NatsBehaviour
+  def unsub(conn, sid, opts \\ []) do
+    Gnat.unsub(conn, sid, opts)
+  end
 end

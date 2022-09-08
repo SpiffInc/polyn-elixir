@@ -36,4 +36,26 @@ defmodule Polyn.MockNatsTest do
       assert_receive({:msg, %{topic: "foo", body: "bar", sid: ^sid}})
     end
   end
+
+  describe "request/4" do
+    test "responds to sender" do
+      nats = start_supervised!(MockNats)
+
+      MockNats.sub(nats, self(), "foo")
+
+      test_pid = self()
+
+      spawn(fn ->
+        result = MockNats.request(nats, "foo", "bar")
+        send(test_pid, result)
+      end)
+
+      receive do
+        {:msg, %{topic: "foo", body: "bar", reply_to: reply_to}} ->
+          MockNats.pub(nats, reply_to, "a response")
+      end
+
+      assert_receive({:ok, %{body: "a response"}})
+    end
+  end
 end

@@ -6,7 +6,7 @@ defmodule Polyn.MockNats do
 
   use GenServer
 
-  defstruct messages: [], subscribers: [], consumers: []
+  defstruct messages: [], subscribers: %{}, consumers: []
 
   def start_link(arg \\ nil) do
     GenServer.start_link(__MODULE__, arg)
@@ -27,8 +27,26 @@ defmodule Polyn.MockNats do
   end
 
   @impl Polyn.NatsBehaviour
+  def unsub(conn, sid, opts \\ []) do
+    GenServer.call(conn, {:unsub, sid, opts})
+  end
+
+  @impl Polyn.NatsBehaviour
   def request(conn, subject, data, opts \\ []) do
-    # Gnat.request(conn, subject, data, opts)
+    {:ok, inbox} = GenServer.call(conn, {:request, self(), subject, data, opts})
+
+    result =
+      receive do
+        {:msg, %{topic: ^inbox} = msg} ->
+          {:ok, msg}
+      after
+        100 ->
+          {:error, :timeout}
+      end
+
+    :ok = unsub(conn, inbox)
+
+    result
   end
 
   @impl GenServer
@@ -42,6 +60,34 @@ defmodule Polyn.MockNats do
   end
 
   def handle_call({:pub, subject, data, opts}, _from, state) do
+    state = publish_msg(subject, data, opts, state)
+
+    {:reply, :ok, state}
+  end
+
+  def handle_call({:sub, subscriber, subject, _opts}, _from, state) do
+    {sid, state} = add_subscriber(subscriber, subject, unique_integer(), state)
+
+    {:reply, {:ok, sid}, state}
+  end
+
+  def handle_call({:unsub, sid, _opts}, _from, state) do
+    subscribers = Map.delete(state.subscribers, sid)
+
+    {:reply, :ok, %{state | subscribers: subscribers}}
+  end
+
+  def handle_call({:request, recipient, subject, data, _opts}, _from, state) do
+    inbox = "_INBOX.#{unique_integer()}"
+    # Use the INBOX as the sid on request subscriptions so it's easier to
+    # find and delete the subscription after response
+    {_sid, state} = add_subscriber(recipient, inbox, inbox, state)
+    state = publish_msg(subject, data, [reply_to: inbox], state)
+
+    {:reply, {:ok, inbox}, state}
+  end
+
+  defp publish_msg(subject, data, opts, state) do
     msg = %{
       gnat: self(),
       topic: subject,
@@ -52,21 +98,26 @@ defmodule Polyn.MockNats do
 
     messages = state.messages ++ [msg]
 
-    Enum.filter(state.subscribers, &(&1.subject == subject))
-    |> Enum.each(fn sub ->
-      send(sub.subscriber, {:msg, Map.put(msg, :sid, sub.sid)})
-    end)
+    send_to_subscribers(msg, state)
 
-    {:reply, :ok, Map.put(state, :messages, messages)}
+    Map.put(state, :messages, messages)
   end
 
-  def handle_call({:sub, subscriber, subject, _opts}, _from, state) do
-    sid = System.unique_integer([:positive])
+  defp send_to_subscribers(msg, state) do
+    Enum.filter(state.subscribers, fn {_key, sub} -> sub.subject == msg.topic end)
+    |> Enum.each(fn {sid, sub} ->
+      send(sub.subscriber, {:msg, Map.put(msg, :sid, sid)})
+    end)
+  end
 
+  defp add_subscriber(subscriber, subject, sid, state) do
     subscribers =
-      state.subscribers ++
-        [%{sid: sid, subject: subject, subscriber: subscriber}]
+      Map.put(state.subscribers, sid, %{sid: sid, subject: subject, subscriber: subscriber})
 
-    {:reply, {:ok, sid}, Map.put(state, :subscribers, subscribers)}
+    {sid, Map.put(state, :subscribers, subscribers)}
+  end
+
+  defp unique_integer do
+    System.unique_integer([:positive])
   end
 end
