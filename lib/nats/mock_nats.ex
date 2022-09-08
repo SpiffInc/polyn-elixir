@@ -16,6 +16,10 @@ defmodule Polyn.MockNats do
     GenServer.call(conn, :get_messages)
   end
 
+  def get_subscribers(conn) do
+    GenServer.call(conn, :get_subscribers)
+  end
+
   @impl Polyn.NatsBehaviour
   def pub(conn, subject, data, opts \\ []) do
     GenServer.call(conn, {:pub, subject, data, opts})
@@ -57,6 +61,10 @@ defmodule Polyn.MockNats do
   @impl GenServer
   def handle_call(:get_messages, _from, state) do
     {:reply, state.messages, state}
+  end
+
+  def handle_call(:get_subscribers, _from, state) do
+    {:reply, state.subscribers, state}
   end
 
   def handle_call({:pub, subject, data, opts}, _from, state) do
