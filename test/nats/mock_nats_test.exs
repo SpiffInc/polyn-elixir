@@ -58,4 +58,19 @@ defmodule Polyn.MockNatsTest do
       assert_receive({:ok, %{body: "a response"}})
     end
   end
+
+  describe "unsub/3" do
+    test "removes subscribers" do
+      nats = start_supervised!(MockNats)
+
+      {:ok, sid} = MockNats.sub(nats, self(), "foo")
+
+      assert MockNats.get_subscribers(nats) == %{
+               sid => %{subscriber: self(), sid: sid, subject: "foo"}
+             }
+
+      assert :ok = MockNats.unsub(nats, sid)
+      assert MockNats.get_subscribers(nats) == %{}
+    end
+  end
 end
