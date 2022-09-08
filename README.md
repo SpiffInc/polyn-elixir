@@ -126,10 +126,13 @@ Despite mocking some NATS functionality you will still need a running nats-serve
 When the tests start it will load all your schemas. The tests themselves will also use the running server to verify
 stream and consumer configuration information. This hybrid mocking approach is intended to give isolation and reliability while also ensuring correct integration.
 
+<<<<<<< HEAD
 ### Nested Processes
 
 `Polyn.Testing` associates each test process with its own NATS mock. To allow other processes that will call `Polyn` functions to use the same NATS mock as the rest of the test use the `Polyn.Sandbox.allow/2` function. If you don't have access to the `pid` or name of a process that is using `Polyn` you will need to make your file `async: false`.
 
+=======
+>>>>>>> b898f45 (allow different nats implementations)
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed

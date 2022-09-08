@@ -83,7 +83,7 @@ defmodule Polyn.Subscriber do
   end
 
   defp sub(conn, event, opts) do
-    Gnat.sub(conn, self(), event, opts)
+    nats().sub(conn, self(), event, opts)
   end
 
   defp on_subscribe_success(subscription, module, init_args, opts) do
@@ -126,5 +126,9 @@ defmodule Polyn.Subscriber do
       other ->
         other
     end
+  end
+
+  defp nats do
+    Application.get_env(:polyn, :nats, Gnat)
   end
 end
