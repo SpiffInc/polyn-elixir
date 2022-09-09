@@ -9,6 +9,20 @@ defmodule Polyn.SchemaStoreTest do
 
   @store_name "POLYN_SCHEMAS_SCHEMA_STORE_TEST"
 
+  describe "start_link/1" do
+    test "loads schema on init" do
+      assert :ok = SchemaStore.create_store(@conn_name, name: @store_name)
+      KV.put_value(@conn_name, @store_name, "foo", "bar")
+
+      store =
+        start_supervised!({SchemaStore, store_name: @store_name, connection_name: @conn_name})
+
+      assert SchemaStore.get_schemas(store) == %{"foo" => "bar"}
+
+      delete_store()
+    end
+  end
+
   describe "create_store/0" do
     test "creates a store" do
       assert :ok = SchemaStore.create_store(@conn_name, name: @store_name)
@@ -31,48 +45,43 @@ defmodule Polyn.SchemaStoreTest do
   describe "save/2" do
     setup :init_store
 
-    test "persists a new schema" do
+    test "persists a new schema", %{store: store} do
       assert :ok =
                SchemaStore.save(
-                 @conn_name,
+                 store,
                  "foo.bar",
-                 %{type: "null"},
-                 name: @store_name
+                 %{type: "null"}
                )
 
-      assert SchemaStore.get(@conn_name, "foo.bar", name: @store_name) == %{"type" => "null"}
+      assert SchemaStore.get(store, "foo.bar") == %{"type" => "null"}
       delete_store()
     end
 
-    test "updates already existing" do
+    test "updates already existing", %{store: store} do
       assert :ok =
                SchemaStore.save(
-                 @conn_name,
+                 store,
                  "foo.bar",
-                 %{type: "string"},
-                 name: @store_name
+                 %{type: "string"}
                )
 
       assert :ok =
                SchemaStore.save(
-                 @conn_name,
+                 store,
                  "foo.bar",
-                 %{type: "null"},
-                 name: @store_name
+                 %{type: "null"}
                )
 
-      assert SchemaStore.get(@conn_name, "foo.bar", name: @store_name) == %{"type" => "null"}
+      assert SchemaStore.get(store, "foo.bar") == %{"type" => "null"}
       delete_store()
     end
 
-    test "error if not a JSONSchema document" do
+    test "error if not a JSONSchema document", %{store: store} do
       assert_raise(
         Polyn.SchemaException,
         "Schemas must be valid JSONSchema documents, got %{\"type\" => \"not-a-valid-type\"}",
         fn ->
-          SchemaStore.save(@conn_name, "foo.bar", %{"type" => "not-a-valid-type"},
-            name: @store_name
-          )
+          SchemaStore.save(store, "foo.bar", %{"type" => "not-a-valid-type"})
         end
       )
 
@@ -83,55 +92,41 @@ defmodule Polyn.SchemaStoreTest do
   describe "delete/1" do
     setup :init_store
 
-    test "deletes a schema" do
+    test "deletes a schema", %{store: store} do
       assert :ok =
                SchemaStore.save(
-                 @conn_name,
+                 store,
                  "foo.bar",
                  %{
                    type: "null"
-                 },
-                 name: @store_name
+                 }
                )
 
-      assert :ok = SchemaStore.delete(@conn_name, "foo.bar", name: @store_name)
+      assert :ok = SchemaStore.delete(store, "foo.bar")
 
-      assert SchemaStore.get(@conn_name, "foo.bar", name: @store_name) == nil
+      assert SchemaStore.get(store, "foo.bar") == nil
     end
 
-    test "deletes a schema that doesn't exist" do
-      assert :ok = SchemaStore.delete(@conn_name, "foo.bar", name: @store_name)
+    test "deletes a schema that doesn't exist", %{store: store} do
+      assert :ok = SchemaStore.delete(store, "foo.bar")
 
-      assert SchemaStore.get(@conn_name, "foo.bar", name: @store_name) == nil
+      assert SchemaStore.get(store, "foo.bar") == nil
     end
   end
 
   describe "get/2" do
     setup :init_store
 
-    test "returns nil if not found" do
-      assert SchemaStore.get(@conn_name, "foo.bar", name: @store_name) == nil
+    test "returns nil if not found", %{store: store} do
+      assert SchemaStore.get(store, "foo.bar") == nil
       delete_store()
-    end
-
-    test "raises if store not found" do
-      SchemaStore.delete_store(@conn_name, name: @store_name)
-
-      %{message: message} =
-        assert_raise(
-          Polyn.SchemaException,
-          fn ->
-            SchemaStore.get(@conn_name, "foo.bar", name: @store_name)
-          end
-        )
-
-      assert message =~ "The Schema Store has not been setup on your NATS server"
     end
   end
 
   defp init_store(context) do
     SchemaStore.create_store(@conn_name, name: @store_name)
-    context
+    store = start_supervised!({SchemaStore, store_name: @store_name, connection_name: @conn_name})
+    Map.put(context, :store, store)
   end
 
   defp delete_store do
