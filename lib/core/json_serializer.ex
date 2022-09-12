@@ -9,18 +9,18 @@ defmodule Polyn.Serializers.JSON do
   @doc """
   Convert a JSON payload into a Polyn.Event struct
   """
-  @spec deserialize(json :: binary(), conn :: Gnat.t()) ::
+  @spec deserialize(json :: binary()) ::
           {:ok, Polyn.Event.t()} | {:error, binary()}
-  def deserialize(json, conn, opts \\ []) do
+  def deserialize(json, opts \\ []) do
     with {:ok, data} <- decode(json),
-         {:ok, json} <- validate(data, conn, opts) do
+         {:ok, json} <- validate(data, opts) do
       {:ok, to_event(json)}
     end
   end
 
-  @spec deserialize!(json :: binary(), conn :: Gnat.t()) :: Polyn.Event.t()
-  def deserialize!(json, conn, opts \\ []) do
-    case deserialize(json, conn, opts) do
+  @spec deserialize!(json :: binary()) :: Polyn.Event.t()
+  def deserialize!(json, opts \\ []) do
+    case deserialize(json, opts) do
       {:ok, event} -> event
       {:error, error} -> raise Polyn.ValidationException, error
     end
@@ -58,12 +58,12 @@ defmodule Polyn.Serializers.JSON do
   Convert a Polyn.Event struct into a JSON paylod.
   Raises an error if event is not valid
   """
-  @spec serialize!(event :: Polyn.Event.t(), conn :: Gnat.t()) :: String.t()
-  def serialize!(%Event{} = event, conn, opts \\ []) do
+  @spec serialize!(event :: Polyn.Event.t()) :: String.t()
+  def serialize!(%Event{} = event, opts \\ []) do
     Map.from_struct(event)
     |> add_datacontenttype()
     |> atom_keys_to_strings()
-    |> validate!(conn, opts)
+    |> validate!(opts)
     |> Jason.encode!()
   end
 
@@ -79,8 +79,8 @@ defmodule Polyn.Serializers.JSON do
     |> Jason.decode!()
   end
 
-  defp validate!(json, conn, opts) do
-    case validate(json, conn, opts) do
+  defp validate!(json, opts) do
+    case validate(json, opts) do
       {:ok, json} ->
         json
 
@@ -89,11 +89,11 @@ defmodule Polyn.Serializers.JSON do
     end
   end
 
-  defp validate(json, conn, opts) do
+  defp validate(json, opts) do
     with :ok <- validate_cloud_event(json),
          {:ok, type} <- get_event_type(json),
          :ok <- validate_event_type(type),
-         {:ok, schema} <- get_schema(conn, type, opts),
+         {:ok, schema} <- get_schema(type, opts),
          :ok <- validate_schema(schema, json) do
       {:ok, json}
     else
@@ -123,7 +123,7 @@ defmodule Polyn.Serializers.JSON do
     end
   end
 
-  defp get_schema(conn, type, opts) do
+  defp get_schema(type, opts) do
     case SchemaStore.get(store_name(opts), type) do
       nil ->
         {:error,
@@ -192,6 +192,6 @@ defmodule Polyn.Serializers.JSON do
   end
 
   defp store_name(opts) do
-    Keyword.get(opts, :store_name, SchemaStore)
+    Keyword.get(opts, :store_name) |> SchemaStore.process_name()
   end
 end

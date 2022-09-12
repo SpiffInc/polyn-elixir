@@ -1,23 +1,18 @@
 defmodule Polyn.Serializers.JSONTest do
-  use Polyn.ConnCase, async: true
+  use ExUnit.Case, async: true
 
   alias Polyn.Event
   alias Polyn.SchemaStore
   alias Polyn.Serializers.JSON
 
-  @conn_name :json_serializer_gnat
-  @moduletag with_gnat: @conn_name
-
   @store_name "JSON_SERIALIZER_TEST_SCHEMA_STORE"
-  @store_process_name String.to_atom(@store_name)
 
   setup do
     start_supervised!(
       {SchemaStore,
        [
          store_name: @store_name,
-         connection_name: @conn_name,
-         name: @store_process_name,
+         connection_name: :foo,
          schemas: %{
            "foo.created.v1" =>
              Jason.encode!(%{
@@ -61,7 +56,7 @@ defmodule Polyn.Serializers.JSONTest do
           data: nil
         }
         |> Jason.encode!()
-        |> JSON.deserialize(@conn_name, store_name: @store_process_name)
+        |> JSON.deserialize(store_name: @store_name)
 
       assert %Event{
                id: "foo",
@@ -86,7 +81,7 @@ defmodule Polyn.Serializers.JSONTest do
           data: %{foo: "bar"}
         }
         |> Jason.encode!()
-        |> JSON.deserialize(@conn_name, store_name: @store_process_name)
+        |> JSON.deserialize(store_name: @store_name)
 
       assert %Event{
                id: "foo",
@@ -108,7 +103,7 @@ defmodule Polyn.Serializers.JSONTest do
           data: %{foo: "bar"}
         }
         |> Jason.encode!()
-        |> JSON.deserialize(@conn_name, store_name: @store_process_name)
+        |> JSON.deserialize(store_name: @store_name)
 
       assert message =~ "Schema for not.a.schema.v1 does not exist."
     end
@@ -126,7 +121,7 @@ defmodule Polyn.Serializers.JSONTest do
           data: %{foo: 1}
         }
         |> Jason.encode!()
-        |> JSON.deserialize(@conn_name, store_name: @store_process_name)
+        |> JSON.deserialize(store_name: @store_name)
 
       assert message =~ "Polyn event foo from test is not valid"
       assert message =~ "Property: `#/data/foo` - Type mismatch. Expected String but got Integer."
@@ -145,21 +140,20 @@ defmodule Polyn.Serializers.JSONTest do
           data: %{foo: "bar"}
         }
         |> Jason.encode!()
-        |> JSON.deserialize(@conn_name, store_name: @store_process_name)
+        |> JSON.deserialize(store_name: @store_name)
 
       assert message =~ "Event names must be lowercase, alphanumeric and dot separated"
     end
 
     test "error if data isn't cloudevent" do
-      {:error, message} = JSON.deserialize("123", @conn_name, store_name: @store_process_name)
+      {:error, message} = JSON.deserialize("123", store_name: @store_name)
 
       assert message =~ "Polyn events need to follow the CloudEvent spec"
       assert message =~ "Expected Object but got Integer"
     end
 
     test "error if payload is not decodeable" do
-      assert {:error, message} =
-               JSON.deserialize("foo", @conn_name, store_name: @store_process_name)
+      assert {:error, message} = JSON.deserialize("foo", store_name: @store_name)
 
       assert message =~ "Polyn was unable to decode the following message: \nfoo"
     end
@@ -177,7 +171,7 @@ defmodule Polyn.Serializers.JSONTest do
             data: %{foo: "bar"}
           }
           |> Jason.encode!()
-          |> JSON.deserialize!(@conn_name, store_name: @store_process_name)
+          |> JSON.deserialize!(store_name: @store_name)
         end)
 
       assert message =~ "Schema for not.a.schema.v1 does not exist."
@@ -197,7 +191,7 @@ defmodule Polyn.Serializers.JSONTest do
           source: "test",
           time: now
         )
-        |> JSON.serialize!(@conn_name, store_name: @store_process_name)
+        |> JSON.serialize!(store_name: @store_name)
         |> Jason.decode!()
 
       assert %{
@@ -226,7 +220,7 @@ defmodule Polyn.Serializers.JSONTest do
           source: "test",
           data: %{"foo" => "bar"}
         )
-        |> JSON.serialize!(@conn_name, store_name: @store_process_name)
+        |> JSON.serialize!(store_name: @store_name)
         |> Jason.decode!()
 
       assert json["data"] == %{"foo" => "bar"}
@@ -242,7 +236,7 @@ defmodule Polyn.Serializers.JSONTest do
           datacontenttype: "application/xml",
           data: "<much wow=\"xml\"/>"
         )
-        |> JSON.serialize!(@conn_name, store_name: @store_process_name)
+        |> JSON.serialize!(store_name: @store_name)
         |> Jason.decode!()
 
       assert json["data"] == "<much wow=\"xml\"/>"
@@ -260,7 +254,7 @@ defmodule Polyn.Serializers.JSONTest do
 
       %{message: message} =
         assert_raise(Polyn.ValidationException, fn ->
-          JSON.serialize!(event, @conn_name, store_name: @store_process_name)
+          JSON.serialize!(event, store_name: @store_name)
         end)
 
       assert message =~ "Schema for not.a.schema.v1 does not exist"
@@ -276,7 +270,7 @@ defmodule Polyn.Serializers.JSONTest do
             source: "test",
             data: "foo"
           )
-          |> JSON.serialize!(@conn_name, store_name: @store_process_name)
+          |> JSON.serialize!(store_name: @store_name)
         end)
 
       assert message =~ "Property: `#/id` - Type mismatch. Expected String but got Null."
@@ -292,7 +286,7 @@ defmodule Polyn.Serializers.JSONTest do
             source: "test",
             data: nil
           )
-          |> JSON.serialize!(@conn_name, store_name: @store_process_name)
+          |> JSON.serialize!(store_name: @store_name)
         end)
 
       assert message =~ "Polyn event abc from test is not valid"
