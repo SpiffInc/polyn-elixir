@@ -88,7 +88,7 @@ You can use `Polyn.request/4` to a do a [psuedo-synchronous request](https://doc
 Add the following to your `config/test.exs`
 
 ```elixir
-config :polyn, :nats, Polyn.MockNats
+config :polyn, :sandbox, true
 ```
 
 ### Test Isolation
