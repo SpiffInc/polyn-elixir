@@ -94,18 +94,16 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
       {:noreply, messages, state} =
         OffBroadway.Jetstream.Producer.handle_demand(incoming_demand, state)
 
-      conn = state.connection_options.connection_name
       store_name = state.store_name
-
-      messages = Enum.map(messages, &message_to_event(conn, store_name, &1))
+      messages = Enum.map(messages, &message_to_event(store_name, &1))
 
       handle_invalid_messages!(messages, state.ack_ref)
 
       {:noreply, messages, state}
     end
 
-    defp message_to_event(conn, store_name, %Message{data: data} = message) do
-      case JSON.deserialize(data, conn, store_name: store_name) do
+    defp message_to_event(store_name, %Message{data: data} = message) do
+      case JSON.deserialize(data, store_name: store_name) do
         {:ok, event} ->
           Message.update_data(message, fn _data -> event end)
 
