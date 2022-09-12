@@ -2,6 +2,9 @@ defmodule Polyn.SchemaStore do
   @moduledoc """
   A SchemaStore for loading and accessing schemas from the NATS server that were
   created via Polyn CLI.
+
+  You will need this running, likely in your application supervision tree, in order for
+  Polyn to access schemas
   """
 
   use GenServer
@@ -22,7 +25,10 @@ defmodule Polyn.SchemaStore do
   """
   @spec start_link(opts :: [option()]) :: GenServer.on_start()
   def start_link(opts) do
-    {store_args, server_opts} = Keyword.split(opts, [:store_name, :connection_name])
+    {store_args, server_opts} = Keyword.split(opts, [:schemas, :store_name, :connection_name])
+    # For applications and application testing there should only be one SchemaStore running.
+    # For testing the library there could be multiple
+    server_opts = Keyword.put_new(server_opts, :name, __MODULE__)
     GenServer.start_link(__MODULE__, store_args, server_opts)
   end
 
