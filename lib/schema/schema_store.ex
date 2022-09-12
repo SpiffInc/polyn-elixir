@@ -115,17 +115,21 @@ defmodule Polyn.SchemaStore do
   def init(init_args) do
     store_name = Keyword.get(init_args, :store_name, @store_name)
     conn = Keyword.fetch!(init_args, :connection_name)
+    preloaded_schemas = Keyword.get(init_args, :schemas)
 
-    schemas =
-      case KV.contents(conn, store_name) do
-        {:ok, schemas} ->
-          schemas
-
-        {:error, reason} ->
-          raise Polyn.SchemaException, reason
-      end
+    schemas = preloaded_schemas || load_schemas(conn, store_name)
 
     {:ok, %{conn: conn, store_name: store_name, schemas: schemas}}
+  end
+
+  defp load_schemas(conn, store_name) do
+    case KV.contents(conn, store_name) do
+      {:ok, schemas} ->
+        schemas
+
+      {:error, reason} ->
+        raise Polyn.SchemaException, reason
+    end
   end
 
   @impl GenServer

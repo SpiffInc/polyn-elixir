@@ -125,7 +125,12 @@ defmodule Polyn.SchemaStoreTest do
 
   defp init_store(context) do
     SchemaStore.create_store(@conn_name, name: @store_name)
-    store = start_supervised!({SchemaStore, store_name: @store_name, connection_name: @conn_name})
+
+    store =
+      start_supervised!(
+        {SchemaStore, store_name: @store_name, connection_name: @conn_name, schemas: %{}}
+      )
+
     Map.put(context, :store, store)
   end
 
