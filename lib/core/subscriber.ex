@@ -113,7 +113,6 @@ defmodule Polyn.Subscriber do
     event =
       JSON.deserialize!(
         body,
-        Keyword.fetch!(internal_state.opts, :connection_name),
         internal_state.opts
       )
 

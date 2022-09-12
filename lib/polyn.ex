@@ -69,7 +69,7 @@ defmodule Polyn do
 
     opts = add_nats_msg_id_header(opts, event)
 
-    nats().pub(conn, event_type, JSON.serialize!(event, conn, opts), remove_polyn_opts(opts))
+    nats().pub(conn, event_type, JSON.serialize!(event, opts), remove_polyn_opts(opts))
   end
 
   @doc """
@@ -105,11 +105,11 @@ defmodule Polyn do
     case nats().request(
            conn,
            event_type,
-           JSON.serialize!(event, conn, opts),
+           JSON.serialize!(event, opts),
            remove_polyn_opts(opts)
          ) do
       {:ok, message} ->
-        {:ok, Map.put(message, :body, JSON.deserialize!(message.body, conn, opts))}
+        {:ok, Map.put(message, :body, JSON.deserialize!(message.body, opts))}
 
       error ->
         error
@@ -147,7 +147,7 @@ defmodule Polyn do
 
     opts = add_nats_msg_id_header(opts, event)
 
-    nats().pub(conn, reply_to, JSON.serialize!(event, conn, opts), remove_polyn_opts(opts))
+    nats().pub(conn, reply_to, JSON.serialize!(event, opts), remove_polyn_opts(opts))
   end
 
   defp build_event(event_type, data, opts) do
