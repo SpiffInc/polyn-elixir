@@ -124,7 +124,7 @@ defmodule Polyn.Serializers.JSON do
   end
 
   defp get_schema(conn, type, opts) do
-    case SchemaStore.get(conn, type, name: store_name(opts)) do
+    case SchemaStore.get(store_name(opts), type) do
       nil ->
         {:error,
          [
@@ -192,6 +192,6 @@ defmodule Polyn.Serializers.JSON do
   end
 
   defp store_name(opts) do
-    Keyword.get(opts, :store_name, SchemaStore.store_name())
+    Keyword.get(opts, :store_name, SchemaStore)
   end
 end
