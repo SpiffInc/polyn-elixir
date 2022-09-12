@@ -4,26 +4,47 @@ defmodule PolynTest do
   alias Polyn.Event
   alias Polyn.SchemaStore
 
-  @conn_name :producer_gnat
+  @conn_name :polyn_gnat
   @moduletag with_gnat: @conn_name
 
-  @store_name "PRODUCER_TEST_SCHEMA_STORE"
+  @store_name "POLYN_TEST_SCHEMA_STORE"
 
   setup do
-    :ok = SchemaStore.create_store(@conn_name, name: @store_name)
+    start_supervised!(
+      {SchemaStore,
+       [
+         store_name: @store_name,
+         connection_name: :foo,
+         schemas: %{
+           "pub.test.event.v1" =>
+             Jason.encode!(%{
+               "type" => "object",
+               "properties" => %{"data" => %{"type" => "string"}}
+             }),
+           "reply.test.event.v1" =>
+             Jason.encode!(%{
+               "type" => "object",
+               "properties" => %{"data" => %{"type" => "string"}}
+             }),
+           "request.test.request.v1" =>
+             Jason.encode!(%{
+               "type" => "object",
+               "properties" => %{"data" => %{"type" => "string"}}
+             }),
+           "request.test.response.v1" =>
+             Jason.encode!(%{
+               "type" => "object",
+               "properties" => %{"data" => %{"type" => "string"}}
+             })
+         }
+       ]}
+    )
 
-    on_exit(fn ->
-      cleanup()
-    end)
+    :ok
   end
 
   describe "pub/4" do
     test "adds a new event to the server" do
-      add_schema("pub.test.event.v1", %{
-        "type" => "object",
-        "properties" => %{"data" => %{"type" => "string"}}
-      })
-
       Gnat.sub(@conn_name, self(), "pub.test.event.v1")
       Polyn.pub(@conn_name, "pub.test.event.v1", "foo", store_name: @store_name)
 
@@ -37,11 +58,6 @@ defmodule PolynTest do
     end
 
     test "can include extra `source` info" do
-      add_schema("pub.test.event.v1", %{
-        "type" => "object",
-        "properties" => %{"data" => %{"type" => "string"}}
-      })
-
       Gnat.sub(@conn_name, self(), "pub.test.event.v1")
       Polyn.pub(@conn_name, "pub.test.event.v1", "foo", store_name: @store_name, source: "orders")
 
@@ -50,11 +66,6 @@ defmodule PolynTest do
     end
 
     test "builds up polyntrace if :triggered_by is supplied" do
-      add_schema("pub.test.event.v1", %{
-        "type" => "object",
-        "properties" => %{"data" => %{"type" => "string"}}
-      })
-
       Gnat.sub(@conn_name, self(), "pub.test.event.v1")
 
       trigger_event =
@@ -87,22 +98,12 @@ defmodule PolynTest do
     end
 
     test "raises if doesn't match schema" do
-      add_schema("pub.test.event.v1", %{
-        "type" => "object",
-        "properties" => %{"data" => %{"type" => "string"}}
-      })
-
       assert_raise(Polyn.ValidationException, fn ->
         Polyn.pub(@conn_name, "pub.test.event.v1", 100, store_name: @store_name, source: "orders")
       end)
     end
 
     test "passes through other options" do
-      add_schema("pub.test.event.v1", %{
-        "type" => "object",
-        "properties" => %{"data" => %{"type" => "string"}}
-      })
-
       Gnat.sub(@conn_name, self(), "pub.test.event.v1")
       Polyn.pub(@conn_name, "pub.test.event.v1", "foo", store_name: @store_name, reply_to: "foo")
 
@@ -116,11 +117,6 @@ defmodule PolynTest do
     end
 
     test "includes Nats-Msg-Id header" do
-      add_schema("pub.test.event.v1", %{
-        "type" => "object",
-        "properties" => %{"data" => %{"type" => "string"}}
-      })
-
       Gnat.sub(@conn_name, self(), "pub.test.event.v1")
 
       Polyn.pub(@conn_name, "pub.test.event.v1", "foo",
@@ -141,11 +137,6 @@ defmodule PolynTest do
 
   describe "reply/5" do
     test "replies to a message" do
-      add_schema("reply.test.event.v1", %{
-        "type" => "object",
-        "properties" => %{"data" => %{"type" => "string"}}
-      })
-
       Gnat.sub(@conn_name, self(), "INBOX.me")
       Polyn.reply(@conn_name, "INBOX.me", "reply.test.event.v1", "foo", store_name: @store_name)
 
@@ -154,11 +145,6 @@ defmodule PolynTest do
     end
 
     test "raises if doesn't match schema" do
-      add_schema("reply.test.event.v1", %{
-        "type" => "object",
-        "properties" => %{"data" => %{"type" => "string"}}
-      })
-
       assert_raise(Polyn.ValidationException, fn ->
         Polyn.reply(@conn_name, "INBOX.me", "reply.test.event.v1", 100, store_name: @store_name)
       end)
@@ -167,16 +153,6 @@ defmodule PolynTest do
 
   describe "request/4" do
     test "returned message is an event" do
-      add_schema("request.test.request.v1", %{
-        "type" => "object",
-        "properties" => %{"data" => %{"type" => "string"}}
-      })
-
-      add_schema("request.test.response.v1", %{
-        "type" => "object",
-        "properties" => %{"data" => %{"type" => "string"}}
-      })
-
       pid =
         spawn_link(fn ->
           Gnat.sub(@conn_name, self(), "request.test.request.v1")
@@ -198,27 +174,12 @@ defmodule PolynTest do
     end
 
     test "error if request event doesn't match schema" do
-      add_schema("request.test.request.v1", %{
-        "type" => "object",
-        "properties" => %{"data" => %{"type" => "string"}}
-      })
-
       assert_raise(Polyn.ValidationException, fn ->
         Polyn.request(@conn_name, "request.test.request.v1", 100, store_name: @store_name)
       end)
     end
 
     test "error if reply event doesn't match schema" do
-      add_schema("request.test.request.v1", %{
-        "type" => "object",
-        "properties" => %{"data" => %{"type" => "string"}}
-      })
-
-      add_schema("request.test.response.v1", %{
-        "type" => "object",
-        "properties" => %{"data" => %{"type" => "string"}}
-      })
-
       pid =
         spawn_link(fn ->
           Gnat.sub(@conn_name, self(), "request.test.request.v1")
@@ -237,10 +198,6 @@ defmodule PolynTest do
     end
   end
 
-  defp add_schema(type, schema) do
-    SchemaStore.save(@conn_name, type, schema, name: @store_name)
-  end
-
   defp get_message do
     receive do
       {:msg, %{body: body}} ->
@@ -249,13 +206,5 @@ defmodule PolynTest do
       100 ->
         raise "no message"
     end
-  end
-
-  defp cleanup do
-    # Manage connection on our own here, because all supervised processes will be
-    # closed by the time `on_exit` runs
-    {:ok, pid} = Gnat.start_link()
-    SchemaStore.delete_store(pid, name: @store_name)
-    Gnat.stop(pid)
   end
 end
