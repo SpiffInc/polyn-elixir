@@ -104,6 +104,12 @@ Add the following to your `config/test.exs`
 config :polyn, :sandbox, true
 ```
 
+In your `test_helper.ex` add the following:
+
+```elixir
+Polyn.Sandbox.start_link()
+```
+
 ### Test Isolation
 
 Following the test setup instructions replaces *most* `Polyn` calls to NATS with mocks. Rather than hitting a real nats-server, the mocks will create an isolated sandbox for each test to ensure that message passing in one test is not affecting any other test. This will help prevent flaky tests and race conditions. It also makes concurrent testing possible. The tests will also all share the same schema store so that schemas aren't fetched from the nats-server repeatedly.
