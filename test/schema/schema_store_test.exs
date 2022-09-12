@@ -15,7 +15,10 @@ defmodule Polyn.SchemaStoreTest do
       KV.put_value(@conn_name, @store_name, "foo", "bar")
 
       store =
-        start_supervised!({SchemaStore, store_name: @store_name, connection_name: @conn_name})
+        start_supervised!(
+          {SchemaStore,
+           store_name: @store_name, connection_name: @conn_name, name: String.to_atom(@store_name)}
+        )
 
       assert SchemaStore.get_schemas(store) == %{"foo" => "bar"}
 
@@ -128,7 +131,11 @@ defmodule Polyn.SchemaStoreTest do
 
     store =
       start_supervised!(
-        {SchemaStore, store_name: @store_name, connection_name: @conn_name, schemas: %{}}
+        {SchemaStore,
+         store_name: @store_name,
+         connection_name: @conn_name,
+         schemas: %{},
+         name: String.to_atom(@store_name)}
       )
 
     Map.put(context, :store, store)
