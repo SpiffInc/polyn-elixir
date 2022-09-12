@@ -223,10 +223,6 @@ defmodule Polyn.PullConsumerTest do
     start_supervised!({ExamplePullConsumer, test_pid: self(), store_name: @store_name})
   end
 
-  defp add_schema(type, schema) do
-    SchemaStore.save(@conn_name, type, schema, name: @store_name)
-  end
-
   defp setup_stream do
     stream = %Stream{name: @stream_name, subjects: @stream_subjects}
     {:ok, _response} = Stream.create(@conn_name, stream)
