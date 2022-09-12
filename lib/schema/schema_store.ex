@@ -28,9 +28,16 @@ defmodule Polyn.SchemaStore do
     {store_args, server_opts} = Keyword.split(opts, [:schemas, :store_name, :connection_name])
     # For applications and application testing there should only be one SchemaStore running.
     # For testing the library there could be multiple
-    server_opts = Keyword.put_new(server_opts, :name, __MODULE__)
+    process_name = Keyword.get(store_args, :store_name) |> process_name()
+    server_opts = Keyword.put_new(server_opts, :name, process_name)
     GenServer.start_link(__MODULE__, store_args, server_opts)
   end
+
+  # Get a process name for a given store name
+  @doc false
+  def process_name(nil), do: __MODULE__
+  def process_name(store_name) when is_binary(store_name), do: String.to_atom(store_name)
+  def process_name(store_name) when is_atom(store_name), do: store_name
 
   @doc false
   @spec get_schemas(pid()) :: map()
