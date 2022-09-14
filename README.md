@@ -97,6 +97,14 @@ In your `test_helper.ex` add the following:
 Polyn.Sandbox.start_link()
 ```
 
+In each test add
+
+```elixir
+import Polyn.Testing
+
+setup :setup_polyn
+```
+
 ### Test Isolation
 
 Following the test setup instructions replaces *most* `Polyn` calls to NATS with mocks. Rather than hitting a real nats-server, the mocks will create an isolated sandbox for each test to ensure that message passing in one test is not affecting any other test. This will help prevent flaky tests and race conditions. It also makes concurrent testing possible. The tests will also all share the same schema store so that schemas aren't fetched from the nats-server repeatedly.
@@ -104,6 +112,10 @@ Following the test setup instructions replaces *most* `Polyn` calls to NATS with
 Despite mocking some NATS functionality you will still need a running nats-server for your testing.
 When the tests start it will load all your schemas. The tests themselves will also use the running server to verify
 stream and consumer configuration information. This hybrid mocking approach is intended to give isolation and reliability while also ensuring correct integration.
+
+### Nested Processes
+
+`Polyn.Testing` associates each test process with its own NATS mock. To allow other processes that will call `Polyn` functions to use the same NATS mock as the rest of the test use the `Polyn.Sandbox.allow/2` function. If you don't have access to the `pid` or name of a process that is using `Polyn` you will need to make your file `async: false`.
 
 ## Installation
 
