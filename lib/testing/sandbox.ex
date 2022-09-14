@@ -48,12 +48,21 @@ defmodule Polyn.Sandbox do
   """
   @spec teardown_test(test_pid :: pid()) :: :ok
   def teardown_test(test_pid) do
-    Agent.update(__MODULE__, &Map.delete(&1, test_pid))
+    Agent.update(__MODULE__, fn state ->
+      Map.delete(state, test_pid)
+      |> Enum.reduce(%{}, fn {key, value}, acc ->
+        if value[:allowed_by] == test_pid do
+          acc
+        else
+          Map.put(acc, key, value)
+        end
+      end)
+    end)
   end
 
   @doc """
   Allow a child process, that is not the test process, to access the running
-  MockNats server.
+  MockNats server. You cannot allow the same process on multiple tests.
 
   ## Examples
 
@@ -85,7 +94,8 @@ defmodule Polyn.Sandbox do
     that is already associated with a running test #{inspect(allowed_by)}. This is
     possibly because you have a shared process that has a lifecycle that
     spans multiple tests. This can cause tests to be flaky and have race conditions
-    as the NATS state will not be isolated. Instead make these tests `async: false`
+    as the NATS state will not be isolated. Instead, refactor code so that the process
+    is not shared between tests or make these tests `async: false`
     """
   end
 end
