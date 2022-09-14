@@ -16,12 +16,23 @@ defmodule Polyn.SandboxTest do
     assert Sandbox.state() == %{foo: %{nats: :bar}}
   end
 
-  test "Can delete a pid" do
-    start_supervised!(Sandbox)
+  describe "teardown_test/1" do
+    test "Can delete a pid" do
+      start_supervised!(Sandbox)
 
-    assert :ok = Sandbox.setup_test(:foo, :bar)
-    assert :ok = Sandbox.teardown_test(:foo)
-    assert Sandbox.state() == %{}
+      assert :ok = Sandbox.setup_test(:foo, :bar)
+      assert :ok = Sandbox.teardown_test(:foo)
+      assert Sandbox.state() == %{}
+    end
+
+    test "Deletes allowed pids" do
+      start_supervised!(Sandbox)
+
+      assert :ok = Sandbox.setup_test(:foo, :bar)
+      assert :ok = Sandbox.allow(:foo, :other_pid)
+      assert :ok = Sandbox.teardown_test(:foo)
+      assert Sandbox.state() == %{}
+    end
   end
 
   describe "allow/2" do
@@ -30,9 +41,10 @@ defmodule Polyn.SandboxTest do
 
       assert :ok = Sandbox.setup_test(:foo, :bar)
       assert :ok = Sandbox.allow(:foo, :other_pid)
-      assert Sandbox.get(:other_pid) == %{nats: :bar, allowed_by: [:foo]}
+      assert Sandbox.get(:other_pid) == :bar
     end
 
+    @tag capture_log: true
     test "Raises if multiple tests allowing same shared process" do
       Process.flag(:trap_exit, true)
       start_supervised!(Sandbox)
