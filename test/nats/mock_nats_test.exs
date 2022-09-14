@@ -2,21 +2,34 @@ defmodule Polyn.MockNatsTest do
   use ExUnit.Case, async: true
 
   alias Polyn.MockNats
+  alias Polyn.Sandbox
+
+  setup do
+    start_supervised!(Sandbox)
+    mock_nats = start_supervised!(Polyn.MockNats)
+    Sandbox.setup_test(self(), mock_nats)
+
+    %{nats: mock_nats}
+  end
 
   describe "pub/4" do
-    test "stores messages" do
-      nats = start_supervised!(MockNats)
-      assert :ok = MockNats.pub(nats, "foo", "bar")
+    test "stores messages", %{nats: nats} do
+      assert :ok = MockNats.pub(:foo, "foo", "bar")
 
-      assert [%{gnat: ^nats, topic: "foo", body: "bar", headers: nil, reply_to: nil}] =
-               MockNats.get_messages(nats)
+      assert [
+               %{
+                 gnat: ^nats,
+                 topic: "foo",
+                 body: "bar",
+                 headers: nil,
+                 reply_to: nil
+               }
+             ] = MockNats.get_messages()
     end
 
-    test "includes header and reply_to" do
-      nats = start_supervised!(MockNats)
-
+    test "includes header and reply_to", %{nats: nats} do
       assert :ok =
-               MockNats.pub(nats, "foo", "bar", headers: [{"key", "value"}], reply_to: "my-inbox")
+               MockNats.pub(:foo, "foo", "bar", headers: [{"key", "value"}], reply_to: "my-inbox")
 
       assert [
                %{
@@ -26,33 +39,44 @@ defmodule Polyn.MockNatsTest do
                  headers: [{"key", "value"}],
                  reply_to: "my-inbox"
                }
-             ] = MockNats.get_messages(nats)
+             ] = MockNats.get_messages()
     end
 
-    test "subscribers receive message instanstly" do
-      nats = start_supervised!(MockNats)
-      assert {:ok, sid} = MockNats.sub(nats, self(), "foo")
-      assert :ok = MockNats.pub(nats, "foo", "bar")
+    test "subscribers receive message instanstly", %{nats: _nats} do
+      assert {:ok, sid} = MockNats.sub(:foo, self(), "foo")
+      assert :ok = MockNats.pub(:foo, "foo", "bar")
       assert_receive({:msg, %{topic: "foo", body: "bar", sid: ^sid}})
+    end
+
+    test "error thrown if process is not associated with a MockNats server" do
+      task =
+        Task.async(fn ->
+          assert_raise(Polyn.TestingException, fn ->
+            MockNats.pub(:foo, "foo", "bar") |> IO.inspect(label: "")
+          end)
+        end)
+
+      Task.await(task)
     end
   end
 
   describe "request/4" do
     test "responds to sender" do
-      nats = start_supervised!(MockNats)
-
-      MockNats.sub(nats, self(), "foo")
+      MockNats.sub(:foo, self(), "foo")
 
       test_pid = self()
 
-      spawn(fn ->
-        result = MockNats.request(nats, "foo", "bar")
-        send(test_pid, result)
-      end)
+      pid =
+        spawn_link(fn ->
+          result = MockNats.request(:foo, "foo", "bar")
+          send(test_pid, result)
+        end)
+
+      Sandbox.allow(self(), pid)
 
       receive do
         {:msg, %{topic: "foo", body: "bar", reply_to: reply_to}} ->
-          MockNats.pub(nats, reply_to, "a response")
+          MockNats.pub(:foo, reply_to, "a response")
       end
 
       assert_receive({:ok, %{body: "a response"}})
@@ -61,16 +85,14 @@ defmodule Polyn.MockNatsTest do
 
   describe "unsub/3" do
     test "removes subscribers" do
-      nats = start_supervised!(MockNats)
+      {:ok, sid} = MockNats.sub(:foo, self(), "foo")
 
-      {:ok, sid} = MockNats.sub(nats, self(), "foo")
-
-      assert MockNats.get_subscribers(nats) == %{
+      assert MockNats.get_subscribers() == %{
                sid => %{subscriber: self(), sid: sid, subject: "foo"}
              }
 
-      assert :ok = MockNats.unsub(nats, sid)
-      assert MockNats.get_subscribers(nats) == %{}
+      assert :ok = MockNats.unsub(:foo, sid)
+      assert MockNats.get_subscribers() == %{}
     end
   end
 end
