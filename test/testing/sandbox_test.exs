@@ -9,18 +9,18 @@ defmodule Polyn.SandboxTest do
     assert Sandbox.state() == %{}
   end
 
-  test "Can map a pid to nats pid" do
+  test "Can setup map a pid to nats pid" do
     start_supervised!(Sandbox)
 
-    assert Sandbox.allow(:foo, :bar)
+    assert Sandbox.setup_test(:foo, :bar)
     assert Sandbox.state() == %{foo: :bar}
   end
 
   test "Can delete a pid" do
     start_supervised!(Sandbox)
 
-    assert Sandbox.allow(:foo, :bar)
-    assert Sandbox.disallow(:foo)
+    assert Sandbox.setup_test(:foo, :bar)
+    assert Sandbox.teardown_test(:foo)
     assert Sandbox.state() == %{}
   end
 end
