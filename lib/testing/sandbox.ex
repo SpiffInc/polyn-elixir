@@ -19,11 +19,15 @@ defmodule Polyn.Sandbox do
     Agent.get(__MODULE__, & &1)
   end
 
-  def allow(test_pid, nats_pid) do
+  def get(test_pid) do
+    Agent.get(__MODULE__, &Map.get(&1, test_pid))
+  end
+
+  def setup_test(test_pid, nats_pid) do
     Agent.update(__MODULE__, &Map.put(&1, test_pid, nats_pid))
   end
 
-  def disallow(test_pid) do
+  def teardown_test(test_pid) do
     Agent.update(__MODULE__, &Map.delete(&1, test_pid))
   end
 end
