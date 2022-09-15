@@ -1,5 +1,5 @@
 defmodule Polyn.MockNatsTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias Polyn.MockNats
   alias Polyn.Sandbox
@@ -47,17 +47,6 @@ defmodule Polyn.MockNatsTest do
       assert :ok = MockNats.pub(:foo, "foo", "bar")
       assert_receive({:msg, %{topic: "foo", body: "bar", sid: ^sid}})
     end
-
-    test "error thrown if process is not associated with a MockNats server" do
-      task =
-        Task.async(fn ->
-          assert_raise(Polyn.TestingException, fn ->
-            MockNats.pub(:foo, "foo", "bar") |> IO.inspect(label: "")
-          end)
-        end)
-
-      Task.await(task)
-    end
   end
 
   describe "request/4" do
@@ -66,13 +55,10 @@ defmodule Polyn.MockNatsTest do
 
       test_pid = self()
 
-      pid =
-        spawn_link(fn ->
-          result = MockNats.request(:foo, "foo", "bar")
-          send(test_pid, result)
-        end)
-
-      Sandbox.allow(self(), pid)
+      spawn_link(fn ->
+        result = MockNats.request(:foo, "foo", "bar")
+        send(test_pid, result)
+      end)
 
       receive do
         {:msg, %{topic: "foo", body: "bar", reply_to: reply_to}} ->
