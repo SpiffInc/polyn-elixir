@@ -31,4 +31,12 @@ defmodule Polyn.ConnCase do
     |> Supervisor.child_spec(start: {Gnat, :start_link, [connection_settings, options]})
     |> start_supervised!()
   end
+
+  def cleanup(fun) do
+    # Manage connection on our own here, because all supervised processes will be
+    # closed by the time `on_exit` runs
+    {:ok, pid} = Gnat.start_link()
+    fun.(pid)
+    Gnat.stop(pid)
+  end
 end

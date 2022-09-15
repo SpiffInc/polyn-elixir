@@ -44,7 +44,10 @@ defmodule OffBroadway.Polyn.ProducerTest do
     {:ok, _response} = Consumer.create(@conn_name, consumer)
 
     on_exit(fn ->
-      cleanup()
+      cleanup(fn pid ->
+        :ok = Consumer.delete(pid, @stream_name, @consumer_name)
+        :ok = Stream.delete(pid, @stream_name)
+      end)
     end)
   end
 
@@ -199,14 +202,5 @@ defmodule OffBroadway.Polyn.ProducerTest do
 
   defp start_pipeline do
     start_supervised!({ExampleBroadwayPipeline, test_pid: self()})
-  end
-
-  defp cleanup do
-    # Manage connection on our own here, because all supervised processes will be
-    # closed by the time `on_exit` runs
-    {:ok, pid} = Gnat.start_link()
-    :ok = Consumer.delete(pid, @stream_name, @consumer_name)
-    :ok = Stream.delete(pid, @stream_name)
-    Gnat.stop(pid)
   end
 end
