@@ -54,13 +54,7 @@ defmodule Polyn.MockNats do
   end
 
   defp lookup_nats_server do
-    case Polyn.Sandbox.get(self()) do
-      nil ->
-        raise Polyn.TestingException, no_nats_server_msg()
-
-      nats_pid ->
-        nats_pid
-    end
+    Polyn.Sandbox.get!(self())
   end
 
   defp no_nats_server_msg do

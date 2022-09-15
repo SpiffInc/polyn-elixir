@@ -30,9 +30,17 @@ defmodule Polyn.Sandbox do
   @doc """
   Get the nats server for a given pid
   """
-  @spec get(pid()) :: pid() | nil
-  def get(pid) do
-    Agent.get(__MODULE__, &lookup_nats(&1, pid))
+  @spec get!(pid()) :: pid()
+  def get!(pid) do
+    result = Agent.get(__MODULE__, &lookup_nats(&1, pid))
+
+    case result do
+      nil ->
+        raise Polyn.TestingException, no_nats_server_msg(pid)
+
+      nats_pid ->
+        nats_pid
+    end
   end
 
   # When async: false we're assuming only 1 test is running
@@ -129,6 +137,29 @@ defmodule Polyn.Sandbox do
     spans multiple tests. This can cause tests to be flaky and have race conditions
     as the NATS state will not be isolated. Instead, refactor code so that the process
     is not shared between tests or make these tests `async: false`
+    """
+  end
+
+  defp no_nats_server_msg(pid) do
+    """
+    \nTo keep NATS data isolated in concurrently running tests each
+    test needs its own MockNats Server. There are no MockNats servers
+    associated with process #{inspect(pid)}. This could happen
+    for several reasons:
+
+    1. Did you forget to add
+    ```
+    import Polyn.Testing
+    setup :setup_polyn
+    ````
+    to the top of your test file?
+
+    2. Is your call to `Polyn` happening in a Process other than the
+    test process? If so you'll need to explicitly associate that process
+    by using `Polyn.Sandbox.allow/2`
+
+    3. If your `Polyn` calls are happening in a Process that isn't
+    accessible to you, you'll need to make your test `async: false`
     """
   end
 end
