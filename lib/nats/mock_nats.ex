@@ -20,6 +20,14 @@ defmodule Polyn.MockNats do
     GenServer.call(lookup_nats_server(), :get_subscribers)
   end
 
+  def add_consumer(consumer_pid) do
+    GenServer.call(lookup_nats_server(), {:add_consumer, consumer_pid})
+  end
+
+  def get_state do
+    GenServer.call(lookup_nats_server(), :get_state)
+  end
+
   @impl Polyn.NatsBehaviour
   def pub(_conn, subject, data, opts \\ []) do
     GenServer.call(lookup_nats_server(), {:pub, subject, data, opts})
@@ -92,6 +100,14 @@ defmodule Polyn.MockNats do
 
   def handle_call(:get_subscribers, _from, state) do
     {:reply, state.subscribers, state}
+  end
+
+  def handle_call(:get_state, _from, state) do
+    {:reply, state, state}
+  end
+
+  def handle_call({:add_consumer, consumer_pid}, _from, state) do
+    {:reply, :ok, %{state | consumers: [consumer_pid | state.consumers]}}
   end
 
   def handle_call({:pub, subject, data, opts}, _from, state) do
