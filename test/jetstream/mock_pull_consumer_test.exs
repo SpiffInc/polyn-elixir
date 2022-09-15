@@ -22,7 +22,9 @@ defmodule Polyn.Jetstream.MockPullConsumerTest do
     mock = start_mock()
 
     on_exit(fn ->
-      cleanup()
+      cleanup(fn pid ->
+        :ok = Stream.delete(pid, @stream_name)
+      end)
     end)
 
     %{nats: mock_nats, mock: mock}
@@ -54,13 +56,5 @@ defmodule Polyn.Jetstream.MockPullConsumerTest do
         ]
       }
     })
-  end
-
-  defp cleanup do
-    # Manage connection on our own here, because all supervised processes will be
-    # closed by the time `on_exit` runs
-    {:ok, pid} = Gnat.start_link()
-    :ok = Stream.delete(pid, @stream_name)
-    Gnat.stop(pid)
   end
 end
