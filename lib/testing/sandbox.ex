@@ -16,7 +16,7 @@ defmodule Polyn.Sandbox do
   """
   @spec start_link(any()) :: Agent.on_start()
   def start_link(_initial_value) do
-    Agent.start_link(fn -> %{} end, name: __MODULE__)
+    Agent.start_link(fn -> %{async: false, pids: %{}} end, name: __MODULE__)
   end
 
   @doc """
@@ -32,7 +32,15 @@ defmodule Polyn.Sandbox do
   """
   @spec get(pid()) :: pid() | nil
   def get(pid) do
-    Agent.get(__MODULE__, &get_in(&1, [pid, :nats]))
+    Agent.get(__MODULE__, &get_in(&1, [:pids, pid, :nats]))
+  end
+
+  @doc """
+  Get the async mode of the Sandbox. Defaults to false
+  """
+  @spec get_async_mode() :: boolean()
+  def get_async_mode do
+    Agent.get(__MODULE__, &Map.get(&1, :async, false))
   end
 
   @doc """
@@ -40,7 +48,7 @@ defmodule Polyn.Sandbox do
   """
   @spec setup_test(test_pid :: pid(), nats_pid :: pid()) :: :ok
   def setup_test(test_pid, nats_pid) do
-    Agent.update(__MODULE__, &Map.put(&1, test_pid, %{nats: nats_pid}))
+    Agent.update(__MODULE__, &put_in(&1, [:pids, test_pid], %{nats: nats_pid}))
   end
 
   @doc """
@@ -49,15 +57,30 @@ defmodule Polyn.Sandbox do
   @spec teardown_test(test_pid :: pid()) :: :ok
   def teardown_test(test_pid) do
     Agent.update(__MODULE__, fn state ->
-      Map.delete(state, test_pid)
-      |> Enum.reduce(%{}, fn {key, value}, acc ->
-        if value[:allowed_by] == test_pid do
-          acc
-        else
-          Map.put(acc, key, value)
-        end
-      end)
+      pids =
+        Map.delete(state.pids, test_pid)
+        |> remove_allowed_pids(test_pid)
+
+      Map.put(state, :pids, pids)
     end)
+  end
+
+  defp remove_allowed_pids(pids, test_pid) do
+    Enum.reduce(pids, %{}, fn {key, value}, acc ->
+      if value[:allowed_by] == test_pid do
+        acc
+      else
+        Map.put(acc, key, value)
+      end
+    end)
+  end
+
+  @doc """
+  Make the sandbox async false or true
+  """
+  @spec set_async_mode(mode :: boolean()) :: :ok
+  def set_async_mode(mode) do
+    Agent.update(__MODULE__, &Map.put(&1, :async, mode))
   end
 
   @doc """
@@ -72,14 +95,14 @@ defmodule Polyn.Sandbox do
   @spec allow(test_pid :: pid(), other_pid :: pid()) :: :ok
   def allow(test_pid, other_pid) do
     Agent.update(__MODULE__, fn state ->
-      validate_allowance!(state, other_pid)
-      mock_nats = state[test_pid][:nats]
-      Map.put(state, other_pid, %{nats: mock_nats, allowed_by: test_pid})
+      validate_allowance!(state.pids, other_pid)
+      mock_nats = state.pids[test_pid][:nats]
+      put_in(state, [:pids, other_pid], %{nats: mock_nats, allowed_by: test_pid})
     end)
   end
 
-  defp validate_allowance!(state, pid) do
-    case state[pid] do
+  defp validate_allowance!(test_pids, pid) do
+    case test_pids[pid] do
       nil ->
         :ok
 

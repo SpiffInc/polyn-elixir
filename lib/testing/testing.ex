@@ -14,6 +14,8 @@ defmodule Polyn.Testing do
   alias Polyn.Sandbox
 
   def setup_polyn(context) do
+    Sandbox.set_async_mode(context.async)
+
     mock_nats = start_supervised!(Polyn.MockNats)
     Sandbox.setup_test(self(), mock_nats)
 
