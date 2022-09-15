@@ -32,7 +32,17 @@ defmodule Polyn.Sandbox do
   """
   @spec get(pid()) :: pid() | nil
   def get(pid) do
-    Agent.get(__MODULE__, &get_in(&1, [:pids, pid, :nats]))
+    Agent.get(__MODULE__, &lookup_nats(&1, pid))
+  end
+
+  # When async: false we're assuming only 1 test is running
+  # and only one association should exist
+  defp lookup_nats(%{async: false, pids: pids}, _pid) when map_size(pids) == 1 do
+    Map.values(pids) |> Enum.at(0) |> Map.get(:nats)
+  end
+
+  defp lookup_nats(%{pids: pids}, pid) do
+    get_in(pids, [pid, :nats])
   end
 
   @doc """
