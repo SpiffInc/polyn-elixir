@@ -6,14 +6,14 @@ defmodule Polyn.SandboxTest do
   test "starts with no mapped pids" do
     start_supervised!(Sandbox)
 
-    assert Sandbox.state() == %{}
+    assert Sandbox.state() == %{async: false, pids: %{}}
   end
 
-  test "Can setup map a pid to nats pid" do
+  test "setup_test/2 maps a pid to nats pid" do
     start_supervised!(Sandbox)
 
     assert :ok = Sandbox.setup_test(:foo, :bar)
-    assert Sandbox.state() == %{foo: %{nats: :bar}}
+    assert %{pids: %{foo: %{nats: :bar}}} = Sandbox.state()
   end
 
   describe "teardown_test/1" do
@@ -22,7 +22,7 @@ defmodule Polyn.SandboxTest do
 
       assert :ok = Sandbox.setup_test(:foo, :bar)
       assert :ok = Sandbox.teardown_test(:foo)
-      assert Sandbox.state() == %{}
+      assert %{pids: %{}} = Sandbox.state()
     end
 
     test "Deletes allowed pids" do
@@ -31,7 +31,7 @@ defmodule Polyn.SandboxTest do
       assert :ok = Sandbox.setup_test(:foo, :bar)
       assert :ok = Sandbox.allow(:foo, :other_pid)
       assert :ok = Sandbox.teardown_test(:foo)
-      assert Sandbox.state() == %{}
+      assert %{pids: %{}} = Sandbox.state()
     end
   end
 
@@ -54,6 +54,16 @@ defmodule Polyn.SandboxTest do
       assert :ok = Sandbox.allow(:test1, :other_pid)
 
       catch_exit(Sandbox.allow(:test2, :other_pid))
+    end
+  end
+
+  describe "async: false" do
+    test "Changes async state" do
+      start_supervised!(Sandbox)
+      assert :ok = Sandbox.set_async_mode(true)
+      assert %{async: true} = Sandbox.state()
+      assert :ok = Sandbox.set_async_mode(false)
+      assert %{async: false} = Sandbox.state()
     end
   end
 end
