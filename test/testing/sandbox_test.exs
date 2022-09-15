@@ -65,5 +65,12 @@ defmodule Polyn.SandboxTest do
       assert :ok = Sandbox.set_async_mode(false)
       assert %{async: false} = Sandbox.state()
     end
+
+    test "global access when async false" do
+      start_supervised!(Sandbox)
+      assert :ok = Sandbox.set_async_mode(false)
+      assert :ok = Sandbox.setup_test(:test1, :nats1)
+      assert Sandbox.get(:foo) == :nats1
+    end
   end
 end
