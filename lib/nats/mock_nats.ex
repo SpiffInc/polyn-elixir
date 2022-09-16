@@ -6,7 +6,7 @@ defmodule Polyn.MockNats do
 
   use GenServer
 
-  defstruct messages: [], subscribers: %{}, consumers: []
+  defstruct messages: [], subscribers: %{}
 
   def start_link(arg \\ nil) do
     GenServer.start_link(__MODULE__, arg)
@@ -18,10 +18,6 @@ defmodule Polyn.MockNats do
 
   def get_subscribers(conn) do
     GenServer.call(conn, :get_subscribers)
-  end
-
-  def add_consumer(consumer_pid) do
-    GenServer.call(lookup_nats_server(), {:add_consumer, consumer_pid})
   end
 
   def get_state do
@@ -61,6 +57,10 @@ defmodule Polyn.MockNats do
     result
   end
 
+  defp lookup_nats_server do
+    Polyn.Sandbox.get!(self())
+  end
+
   @impl GenServer
   def init(_arg) do
     {:ok, %__MODULE__{}}
@@ -77,10 +77,6 @@ defmodule Polyn.MockNats do
 
   def handle_call(:get_state, _from, state) do
     {:reply, state, state}
-  end
-
-  def handle_call({:add_consumer, consumer_pid}, _from, state) do
-    {:reply, :ok, %{state | consumers: [consumer_pid | state.consumers]}}
   end
 
   def handle_call({:pub, subject, data, opts}, _from, state) do
