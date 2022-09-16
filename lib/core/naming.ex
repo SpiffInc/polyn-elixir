@@ -201,12 +201,13 @@ defmodule Polyn.Naming do
         Polyn.StreamException
   """
   def lookup_stream_name!(conn, type) do
-    case Jetstream.API.Stream.list(conn, subject: type) do
+    case Polyn.Jetstream.list_streams(conn, subject: type) do
       {:ok, %{streams: [stream]}} ->
         stream
 
       {:error, error} ->
-        raise Polyn.StreamException, error
+        raise Polyn.StreamException,
+              "Could not find any streams for type #{type}. #{inspect(error)}"
 
       _ ->
         raise Polyn.StreamException, "Could not find any streams for type #{type}"
