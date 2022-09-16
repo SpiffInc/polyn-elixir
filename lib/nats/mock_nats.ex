@@ -6,7 +6,7 @@ defmodule Polyn.MockNats do
 
   use GenServer
 
-  defstruct messages: [], subscribers: %{}, consumers: []
+  defstruct messages: [], subscribers: %{}
 
   def start_link(arg \\ nil) do
     GenServer.start_link(__MODULE__, arg)
@@ -18,10 +18,6 @@ defmodule Polyn.MockNats do
 
   def get_subscribers do
     GenServer.call(lookup_nats_server(), :get_subscribers)
-  end
-
-  def add_consumer(consumer_pid) do
-    GenServer.call(lookup_nats_server(), {:add_consumer, consumer_pid})
   end
 
   def get_state do
@@ -65,29 +61,6 @@ defmodule Polyn.MockNats do
     Polyn.Sandbox.get!(self())
   end
 
-  defp no_nats_server_msg do
-    """
-    \nTo keep NATS data isolated in concurrently running tests each
-    test needs its own MockNats Server. There are no MockNats servers
-    associated with process #{inspect(self())}. This could happen
-    for several reasons:
-
-    1. Did you forget to add
-    ```
-    import Polyn.Testing
-    setup :setup_polyn
-    ````
-    to the top of your test file?
-
-    2. Is your call to `Polyn` happening in a Process other than the
-    test process? If so you'll need to explicitly associate that process
-    by using `Polyn.Sandbox.allow/2`
-
-    3. If your `Polyn` calls are happening in a Process that isn't
-    accessible to you, you'll need to make your test `async: false`
-    """
-  end
-
   @impl GenServer
   def init(_arg) do
     {:ok, %__MODULE__{}}
@@ -104,10 +77,6 @@ defmodule Polyn.MockNats do
 
   def handle_call(:get_state, _from, state) do
     {:reply, state, state}
-  end
-
-  def handle_call({:add_consumer, consumer_pid}, _from, state) do
-    {:reply, :ok, %{state | consumers: [consumer_pid | state.consumers]}}
   end
 
   def handle_call({:pub, subject, data, opts}, _from, state) do
