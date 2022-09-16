@@ -214,6 +214,24 @@ defmodule Polyn.Naming do
     end
   end
 
+  @doc """
+  Determine if a given subject matches a subscription pattern
+  """
+  def subject_matches?(subject, pattern) do
+    separator = "."
+
+    pattern_tokens =
+      String.split(pattern, separator)
+      |> Enum.map_join("\\#{separator}", &build_subject_pattern_part/1)
+      |> Regex.compile!()
+
+    String.match?(subject, pattern_tokens)
+  end
+
+  defp build_subject_pattern_part("*"), do: "(\\w+)"
+  defp build_subject_pattern_part(">"), do: "((\\w+\\.)*\\w)"
+  defp build_subject_pattern_part(token), do: token
+
   defp domain do
     Application.fetch_env!(:polyn, :domain)
   end

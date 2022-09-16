@@ -124,7 +124,9 @@ defmodule Polyn.MockNats do
   end
 
   defp send_to_subscribers(msg, state) do
-    Enum.filter(state.subscribers, fn {_key, sub} -> sub.subject == msg.topic end)
+    Enum.filter(state.subscribers, fn {_key, sub} ->
+      Polyn.Naming.subject_matches?(msg.topic, sub.subject)
+    end)
     |> Enum.each(fn {sid, sub} ->
       send(sub.subscriber, {:msg, Map.put(msg, :sid, sid)})
     end)
