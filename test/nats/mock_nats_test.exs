@@ -1,5 +1,6 @@
 defmodule Polyn.MockNatsTest do
-  use ExUnit.Case, async: true
+  # Async false because of global sandbox
+  use ExUnit.Case, async: false
 
   alias Polyn.MockNats
 
