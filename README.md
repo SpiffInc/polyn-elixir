@@ -58,6 +58,19 @@ The [Cloud Event Spec](https://github.com/cloudevents/spec/blob/v1.0.2/cloudeven
 config :polyn, :source_root, "orders.payments"
 ```
 
+## Schema Store
+
+In order for `Polyn` to access schemas for validation you'll need a running `Polyn.SchemaStore` process. You can add one to your Supervision Tree like this:
+
+```elixir
+  children = [
+    {Polyn.SchemaStore, connection_name: :connection_name_or_pid}
+  ]
+
+  opts = [strategy: :one_for_one, name: MySupervisor]
+  Supervisor.start_link(children, opts)
+```
+
 ## Usage
 
 ### Publishing Messages
@@ -97,7 +110,7 @@ In your `test_helper.ex` add the following:
 Polyn.Sandbox.start_link()
 ```
 
-In each test add
+In tests that interact with Polyn add
 
 ```elixir
 import Polyn.Testing
