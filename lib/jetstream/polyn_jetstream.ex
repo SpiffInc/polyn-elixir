@@ -3,6 +3,12 @@ defmodule Polyn.Jetstream do
 
   alias Jetstream.API.{Consumer, Stream}
 
+  defdelegate list_streams(conn, params \\ []), to: Stream, as: :list
+
+  @doc """
+  Get info for a stream or raise if it doesn't exist
+  """
+  @spec stream_info!(conn :: Gnat.t(), stream_name :: binary()) :: Stream.info()
   def stream_info!(conn, stream_name) do
     case Stream.info(conn, stream_name) do
       {:ok, info} ->
@@ -14,6 +20,11 @@ defmodule Polyn.Jetstream do
     end
   end
 
+  @doc """
+  Get info for a consumer or raise if it doesn't exist
+  """
+  @spec consumer_info!(conn :: Gnat.t(), stream_name :: binary(), consumer_name :: binary()) ::
+          Consumer.info()
   def consumer_info!(conn, stream_name, consumer_name) do
     case Consumer.info(conn, stream_name, consumer_name) do
       {:ok, info} ->
@@ -26,17 +37,26 @@ defmodule Polyn.Jetstream do
   end
 
   @doc """
-  Lookup the name of a stream for a given event type
-
-  ## Examples
-
-        iex>Polyn.Jetstream.lookup_stream_name!(:gnat, "user.created.v1")
-        "USERS"
-
-        iex>Polyn.Jetstream.lookup_stream_name!(:gnat, "foo.v1")
-        Polyn.StreamException
+  Get a list of subjects a consumer cares about
   """
-  def list_streams(conn, params \\ []) do
-    Stream.list(conn, params)
+  @spec subjects_for_consumer(
+          conn :: Gnat.t(),
+          stream_name :: binary(),
+          consumer_name :: binary()
+        ) :: [binary()]
+  def subjects_for_consumer(conn, stream_name, consumer_name) do
+    stream = stream_info!(conn, stream_name)
+    consumer = consumer_info!(conn, stream_name, consumer_name)
+    find_consumer_subjects(stream, consumer)
+  end
+
+  defp find_consumer_subjects(stream, consumer) do
+    stream_subjects = stream.config.subjects
+    consumer_subject = consumer.config.filter_subject
+
+    case consumer_subject do
+      nil -> stream_subjects
+      subject -> [subject]
+    end
   end
 end
