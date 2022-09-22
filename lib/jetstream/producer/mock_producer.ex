@@ -7,6 +7,8 @@ defmodule Polyn.Jetstream.MockProducer do
   alias Broadway.Message
   alias Polyn.MockNats
 
+  @behaviour Broadway.Producer
+
   @impl GenStage
   def init(opts \\ []) do
     subjects =
@@ -20,12 +22,22 @@ defmodule Polyn.Jetstream.MockProducer do
 
     messages = fetch_all_messages(subjects)
 
-    {:producer, %{demand: 0, subjects: subjects, messages: messages}}
+    {:producer, %{demand: 0, subjects: subjects, messages: messages, ack_ref: nil}}
   end
 
   @impl GenStage
   def handle_demand(incoming_demand, %{demand: demand} = state) do
     load_messages(%{state | demand: demand + incoming_demand})
+  end
+
+  @impl Broadway.Producer
+  def prepare_for_start(_module, broadway_opts) do
+    {[], broadway_opts}
+  end
+
+  @impl Broadway.Producer
+  def prepare_for_draining(state) do
+    {:noreply, [], state}
   end
 
   defp load_messages(%{demand: demand} = state) when demand > 0 do
@@ -52,7 +64,7 @@ defmodule Polyn.Jetstream.MockProducer do
       metadata: %{
         topic: msg.topic
       },
-      acknowledger: {Broadway.NoopAcknowledger, nil, msg.body}
+      acknowledger: {Polyn.Jetstream.MockAcknowledger, nil, msg.body}
     }
   end
 

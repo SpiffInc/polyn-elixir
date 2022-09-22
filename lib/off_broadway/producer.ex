@@ -66,40 +66,64 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
     use GenStage
 
     alias Broadway.{Message, Producer}
-    alias OffBroadway.Jetstream.Acknowledger
     alias Polyn.SchemaStore
     alias Polyn.Serializers.JSON
 
     @behaviour Producer
 
-    @impl true
-    defdelegate prepare_for_start(module, opts), to: OffBroadway.Jetstream.Producer
-
-    @impl true
-    defdelegate prepare_for_draining(state), to: OffBroadway.Jetstream.Producer
-
-    @impl true
-    defdelegate handle_info(any, state), to: OffBroadway.Jetstream.Producer
-
-    @impl true
-    def init(opts) do
-      opts = add_consumer_and_stream_name(opts)
-      {:producer, state} = OffBroadway.Jetstream.Producer.init(opts)
-      state = Map.put(state, :store_name, store_name(opts))
-      {:producer, state}
+    @impl Producer
+    def prepare_for_start(module, broadway_opts) do
+      opts = broadway_opts[:producer][:module] |> elem(1)
+      producer(opts).prepare_for_start(module, broadway_opts)
     end
 
-    @impl true
-    def handle_demand(incoming_demand, state) do
-      {:noreply, messages, state} =
-        OffBroadway.Jetstream.Producer.handle_demand(incoming_demand, state)
+    @impl Producer
+    def prepare_for_draining(state) do
+      state.producer.prepare_for_draining(state)
+    end
 
+    @impl GenStage
+    def handle_info(any, state) do
+      response = state.producer.handle_info(any, state)
+
+      case Tuple.to_list(response) do
+        [:noreply, messages, state | rest] -> process_messages(messages, state, rest)
+        _other -> response
+      end
+    end
+
+    @impl GenStage
+    def init(opts) do
+      opts = add_consumer_and_stream_name(opts)
+      producer = producer(opts)
+
+      [:producer, state | rest] = producer.init(opts) |> Tuple.to_list()
+
+      state =
+        Map.put(state, :store_name, store_name(opts))
+        |> Map.put(:producer, producer)
+        |> Map.put(:acknowledger, acknowledger(opts))
+
+      [:producer, state | rest] |> List.to_tuple()
+    end
+
+    @impl GenStage
+    def handle_demand(incoming_demand, state) do
+      response = state.producer.handle_demand(incoming_demand, state)
+
+      case Tuple.to_list(response) do
+        [:noreply, messages, state | rest] -> process_messages(messages, state, rest)
+        _other -> response
+      end
+    end
+
+    defp process_messages(messages, state, rest) do
       store_name = state.store_name
       messages = Enum.map(messages, &message_to_event(store_name, &1))
 
-      handle_invalid_messages!(messages, state.ack_ref)
+      handle_invalid_messages!(messages, state)
 
-      {:noreply, messages, state}
+      [:noreply, messages, state | rest] |> List.to_tuple()
     end
 
     defp message_to_event(store_name, %Message{data: data} = message) do
@@ -113,12 +137,12 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
       end
     end
 
-    defp handle_invalid_messages!(messages, ack_ref) do
+    defp handle_invalid_messages!(messages, %{ack_ref: ack_ref, acknowledger: acknowledger}) do
       if any_invalid?(messages) do
         # Treat all messages as failed since some are invalid. The ones that are valid
         # will send a NACK to indicate they weren't processed and should be sent again
         # the invalid ones will be given TERM so they aren't sent again
-        Acknowledger.ack(ack_ref, [], messages)
+        acknowledger.ack(ack_ref, [], messages)
 
         raise Polyn.ValidationException, combine_invalid_message_errors(messages)
       end
@@ -151,6 +175,25 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
 
       Keyword.put(opts, :stream_name, stream_name)
       |> Keyword.put(:consumer_name, consumer_name)
+    end
+
+    defp producer(opts) do
+      if sandbox(opts), do: Polyn.Jetstream.MockProducer, else: OffBroadway.Jetstream.Producer
+    end
+
+    defp acknowledger(opts) do
+      if sandbox(opts),
+        do: Polyn.Jetstream.MockAcknowledger,
+        else: OffBroadway.Jetstream.Acknowledger
+    end
+
+    # If Application config dictates "sandbox mode" we prioritize that
+    # otherwise we defer to a passed in option
+    defp sandbox(opts) do
+      case Application.get_env(:polyn, :sandbox) do
+        nil -> Keyword.get(opts, :sandbox, false)
+        other -> other
+      end
     end
   end
 end
