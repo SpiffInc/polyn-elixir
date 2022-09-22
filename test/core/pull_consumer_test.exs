@@ -1,5 +1,6 @@
 defmodule Polyn.PullConsumerTest do
-  use Polyn.ConnCase, async: true
+  # async false for global sandbox
+  use Polyn.ConnCase, async: false
 
   alias Jetstream.API.{Consumer, Stream}
   alias Polyn.Event

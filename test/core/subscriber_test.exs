@@ -1,7 +1,8 @@
 defmodule Polyn.SubscriberTest do
-  use Polyn.ConnCase, async: true
+  # async false for global sandbox
+  use Polyn.ConnCase, async: false
 
-  alias Polyn.{Event, SchemaStore, Subscriber}
+  alias Polyn.{Event, MockNats, Sandbox, SchemaStore, Subscriber}
 
   @conn_name :subscriber_gnat
   @moduletag with_gnat: @conn_name
@@ -9,6 +10,10 @@ defmodule Polyn.SubscriberTest do
   @store_name "SUBSCRIBER_TEST_STORE"
 
   setup do
+    start_supervised!(Sandbox)
+    mock_nats = start_supervised!(MockNats)
+    Sandbox.setup_test(self(), mock_nats)
+
     start_supervised!(
       {SchemaStore,
        [
@@ -43,7 +48,8 @@ defmodule Polyn.SubscriberTest do
       Subscriber.start_link(__MODULE__, args,
         connection_name: :subscriber_gnat,
         event: "subscriber.test.event.v1",
-        store_name: "SUBSCRIBER_TEST_STORE"
+        store_name: "SUBSCRIBER_TEST_STORE",
+        sandbox: args[:sandbox]
       )
     end
 
@@ -58,7 +64,7 @@ defmodule Polyn.SubscriberTest do
   end
 
   test "receives messages" do
-    start_supervised!({ExampleSubscriber, %{test_pid: self()}})
+    start_subscriber()
 
     Polyn.pub(@conn_name, "subscriber.test.event.v1", %{name: "Iroh", element: "fire"},
       reply_to: "foo",
@@ -83,7 +89,7 @@ defmodule Polyn.SubscriberTest do
 
   @tag capture_log: true
   test "raises if message is invalid" do
-    pid = start_supervised!({ExampleSubscriber, %{test_pid: self()}})
+    pid = start_subscriber()
     ref = Process.monitor(pid)
 
     Gnat.pub(@conn_name, "subscriber.test.event.v1", """
@@ -100,5 +106,35 @@ defmodule Polyn.SubscriberTest do
     """)
 
     assert_receive({:DOWN, ^ref, :process, ^pid, {%Polyn.ValidationException{}, _stack}})
+  end
+
+  describe "mock integration" do
+    test "receives messages" do
+      start_subscriber(sandbox: true)
+
+      MockNats.pub(
+        @conn_name,
+        "subscriber.test.event.v1",
+        Jason.encode!(%{
+          id: "foo",
+          source: "com:test:user:backend",
+          specversion: "1.0.1",
+          type: "com.test.subscriber.test.event.v1",
+          data: %{name: "Iroh", element: "fire"}
+        }),
+        reply_to: "foo"
+      )
+
+      assert_receive(
+        {:received_event, %Event{data: %{"name" => "Iroh", "element" => "fire"}},
+         %{reply_to: "foo"}}
+      )
+    end
+  end
+
+  defp start_subscriber(opts \\ []) do
+    start_supervised!(
+      {ExampleSubscriber, %{test_pid: self(), sandbox: Keyword.get(opts, :sandbox, false)}}
+    )
   end
 end

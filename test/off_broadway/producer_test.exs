@@ -1,5 +1,6 @@
 defmodule OffBroadway.Polyn.ProducerTest do
-  use Polyn.ConnCase, async: true
+  # false for global sandbox
+  use Polyn.ConnCase, async: false
 
   alias Broadway.Message
   alias Jetstream.API.{Consumer, Stream}
