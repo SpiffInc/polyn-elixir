@@ -4,9 +4,9 @@ defmodule Polyn.PullConsumerTest do
 
   alias Jetstream.API.{Consumer, Stream}
   alias Polyn.Event
-  alias Polyn.SchemaStore
   alias Polyn.MockNats
   alias Polyn.Sandbox
+  alias Polyn.SchemaStore
 
   @conn_name :pull_consumer_gnat
   @moduletag with_gnat: @conn_name
