@@ -4,13 +4,20 @@ defmodule Polyn.Jetstream.Producer do
 
   use GenStage
 
-  @impl GenStage
-  def init(opts \\ []) do
-    OffBroadway.Jetstream.Producer.init(opts)
-  end
+  @behaviour Broadway.Producer
 
   @impl GenStage
-  def handle_demand(incoming_demand, state) do
-    OffBroadway.Jetstream.Producer.handle_demand(incoming_demand, state)
-  end
+  defdelegate init(opts), to: OffBroadway.Jetstream.Producer
+
+  @impl GenStage
+  defdelegate handle_demand(incoming_demand, state), to: OffBroadway.Jetstream.Producer
+
+  @impl Broadway.Producer
+  defdelegate prepare_for_start(module, opts), to: OffBroadway.Jetstream.Producer
+
+  @impl Broadway.Producer
+  defdelegate prepare_for_draining(state), to: OffBroadway.Jetstream.Producer
+
+  @impl GenStage
+  defdelegate handle_info(any, state), to: OffBroadway.Jetstream.Producer
 end
