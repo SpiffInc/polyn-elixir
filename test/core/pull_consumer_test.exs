@@ -4,6 +4,8 @@ defmodule Polyn.PullConsumerTest do
   alias Jetstream.API.{Consumer, Stream}
   alias Polyn.Event
   alias Polyn.SchemaStore
+  alias Polyn.MockNats
+  alias Polyn.Sandbox
 
   @conn_name :pull_consumer_gnat
   @moduletag with_gnat: @conn_name
@@ -16,10 +18,11 @@ defmodule Polyn.PullConsumerTest do
     use Polyn.PullConsumer
 
     def start_link(init_arg) do
-      {store_name, init_arg} = Keyword.pop!(init_arg, :store_name)
+      {config, init_arg} = Keyword.split(init_arg, [:store_name, :sandbox])
 
       Polyn.PullConsumer.start_link(__MODULE__, init_arg,
-        store_name: store_name,
+        store_name: Keyword.fetch!(config, :store_name),
+        sandbox: Keyword.fetch!(config, :sandbox),
         connection_name: :pull_consumer_gnat,
         type: "pull.consumer.test.event.v1"
       )
@@ -36,6 +39,10 @@ defmodule Polyn.PullConsumerTest do
   end
 
   setup do
+    start_supervised!(Sandbox)
+    mock_nats = start_supervised!(MockNats)
+    Sandbox.setup_test(self(), mock_nats)
+
     start_supervised!(
       {SchemaStore,
        [
@@ -222,8 +229,69 @@ defmodule Polyn.PullConsumerTest do
     setup_consumer()
   end
 
-  defp start_listening_for_messages do
-    start_supervised!({ExamplePullConsumer, test_pid: self(), store_name: @store_name})
+  describe "mock integration" do
+    test "receives a message" do
+      MockNats.pub(@conn_name, "pull.consumer.test.event.v1", """
+      {
+        "id": "#{UUID.uuid4()}",
+        "source": "com.test.foo",
+        "type": "com.test.pull.consumer.test.event.v1",
+        "specversion": "1.0.1",
+        "data": {
+          "name": "Toph",
+          "element": "earth"
+        }
+      }
+      """)
+
+      start_listening_for_messages(sandbox: true)
+
+      assert_receive(
+        {:received_event,
+         %Event{
+           type: "com.test.pull.consumer.test.event.v1",
+           data: %{
+             "name" => "Toph",
+             "element" => "earth"
+           }
+         }}
+      )
+    end
+
+    test "receives a message after start" do
+      start_listening_for_messages(sandbox: true)
+
+      MockNats.pub(@conn_name, "pull.consumer.test.event.v1", """
+      {
+        "id": "#{UUID.uuid4()}",
+        "source": "com.test.foo",
+        "type": "com.test.pull.consumer.test.event.v1",
+        "specversion": "1.0.1",
+        "data": {
+          "name": "Toph",
+          "element": "earth"
+        }
+      }
+      """)
+
+      assert_receive(
+        {:received_event,
+         %Event{
+           type: "com.test.pull.consumer.test.event.v1",
+           data: %{
+             "name" => "Toph",
+             "element" => "earth"
+           }
+         }}
+      )
+    end
+  end
+
+  defp start_listening_for_messages(opts \\ []) do
+    start_supervised!(
+      {ExamplePullConsumer,
+       test_pid: self(), store_name: @store_name, sandbox: Keyword.get(opts, :sandbox, false)}
+    )
   end
 
   defp setup_stream do

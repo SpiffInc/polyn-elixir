@@ -32,12 +32,19 @@ defmodule Polyn.Jetstream.MockPullConsumer do
         # This relies on a real look up on a running nats server.
         # This ensures that applications are using real consumer
         # names and real stream names that exist in their server
-        Polyn.Jetstream.subjects_for_consumer(
-          Keyword.fetch!(conn_opts, :connection_name),
-          Keyword.fetch!(conn_opts, :stream_name),
-          Keyword.fetch!(conn_opts, :consumer_name)
-        )
-        |> subscribe_to_subjects()
+        subjects =
+          Polyn.Jetstream.subjects_for_consumer(
+            Keyword.fetch!(conn_opts, :connection_name),
+            Keyword.fetch!(conn_opts, :stream_name),
+            Keyword.fetch!(conn_opts, :consumer_name)
+          )
+
+        subscribe_to_subjects(subjects)
+
+        fetch_all_messages(subjects)
+        |> Enum.each(fn msg ->
+          send(self(), {:msg, msg})
+        end)
 
         {:ok,
          %{
@@ -49,6 +56,13 @@ defmodule Polyn.Jetstream.MockPullConsumer do
       other ->
         other
     end
+  end
+
+  defp fetch_all_messages(subjects) do
+    Polyn.MockNats.get_messages()
+    |> Enum.filter(fn msg ->
+      Enum.any?(subjects, &Polyn.Naming.subject_matches?(msg.topic, &1))
+    end)
   end
 
   defp subscribe_to_subjects(subjects) do
@@ -63,7 +77,7 @@ defmodule Polyn.Jetstream.MockPullConsumer do
   end
 
   @impl GenServer
-  def handle_info({:msg, _msg} = msg, %{module: module, state: state} = internal_state) do
+  def handle_info({:msg, msg}, %{module: module, state: state} = internal_state) do
     module.handle_message(msg, state)
     {:noreply, internal_state}
   end
