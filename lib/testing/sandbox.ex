@@ -7,6 +7,14 @@ defmodule Polyn.Sandbox do
   ```elixir
   Polyn.Sandbox.start_link()
   ```
+
+  ## Nested Processes
+
+  `Polyn.Testing` associates each test process with its own NATS mock.
+  To allow other processes that will call `Polyn` functions to use the same
+  NATS mock as the rest of the test use the `Polyn.Sandbox.allow/2` function.
+  If you don't have access to the `pid` or name of a process that is using `Polyn`
+  you will need to make your file `async: false`.
   """
 
   use Agent
