@@ -1,6 +1,7 @@
 with {:module, _} <- Code.ensure_compiled(Broadway) do
   defmodule Polyn.Jetstream.Producer do
-    # Real calls to Offbroadway.Jetstream.Producer
+    # Real calls to Offbroadway.Jetstream.Producer.
+    # This exists to ensure we don't mock things we don't "own"
     @moduledoc false
 
     use GenStage

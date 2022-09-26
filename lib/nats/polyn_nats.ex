@@ -1,6 +1,7 @@
 defmodule Polyn.Nats do
-  @moduledoc false
   # The real nats for production
+  # This exists to ensure we don't mock things we don't "own"
+  @moduledoc false
 
   @behaviour Polyn.NatsBehaviour
 

@@ -13,6 +13,10 @@ defmodule Polyn.Testing do
   import ExUnit.Callbacks
   alias Polyn.Sandbox
 
+  @doc """
+  Intended to be a ExUnit `setup` function that will create an isolated NATS environment
+  for each test
+  """
   def setup_polyn(context) do
     Sandbox.set_async_mode(context.async)
 

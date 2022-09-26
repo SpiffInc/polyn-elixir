@@ -1,5 +1,6 @@
 defmodule Polyn.Jetstream.PullConsumer do
   # Real Jetstream PullConsumer for production
+  # This exists to ensure we don't mock things we don't "own"
   @moduledoc false
 
   @behaviour Polyn.Jetstream.PullConsumerBehaviour
