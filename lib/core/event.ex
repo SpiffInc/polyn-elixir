@@ -106,7 +106,12 @@ defmodule Polyn.Event do
 
   def full_source(source) do
     Naming.validate_source_name!(source)
-    full_source() <> ":" <> Naming.dot_to_colon(source)
+    source = String.replace(source, ~r/#{full_source()}{1}:?/, "")
+
+    case source do
+      "" -> full_source()
+      name -> "#{full_source()}:#{Naming.dot_to_colon(name)}"
+    end
   end
 
   def full_source do
