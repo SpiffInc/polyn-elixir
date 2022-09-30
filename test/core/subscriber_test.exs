@@ -99,6 +99,6 @@ defmodule Polyn.SubscriberTest do
     }
     """)
 
-    assert_receive({:DOWN, ^ref, :process, ^pid, {%Polyn.ValidationException{}, _stack}})
+    assert_receive({:DOWN, ^ref, :process, ^pid, {%Polyn.ValidationException{}, _stack}}, 500)
   end
 end
