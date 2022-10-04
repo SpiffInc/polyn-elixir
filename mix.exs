@@ -3,7 +3,7 @@ defmodule Polyn.MixProject do
 
   @github "https://github.com/SpiffInc/polyn-elixir"
 
-  def version, do: "0.1.3"
+  def version, do: "0.1.4"
 
   def project do
     [
