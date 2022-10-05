@@ -173,7 +173,7 @@ defmodule Polyn.PullConsumerTest do
     pid = start_listening_for_messages()
     ref = Process.monitor(pid)
 
-    assert_receive({:DOWN, ^ref, :process, ^pid, {%Polyn.ValidationException{}, _stack}})
+    assert_receive({:DOWN, ^ref, :process, ^pid, {%Polyn.ValidationException{}, _stack}}, 500)
 
     assert_receive(
       {:received_event,
