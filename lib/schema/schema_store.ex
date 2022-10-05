@@ -1,20 +1,57 @@
 defmodule Polyn.SchemaStore do
-  # Persisting and interacting with persisted schemas
-  @moduledoc false
+  @moduledoc """
+  A SchemaStore for loading and accessing schemas from the NATS server that were
+  created via Polyn CLI.
+
+  You will need this running, likely in your application supervision tree, in order for
+  Polyn to access schemas
+  """
+
+  use GenServer
 
   alias Jetstream.API.KV
 
   @store_name "POLYN_SCHEMAS"
 
+  @type option :: {:connection_name, Gnat.t()} | GenServer.option()
+
   @doc """
-  Persist a schema. In prod/dev schemas should have already been persisted via
-  the Polyn CLI.
+  Start a new SchemaStore process
+
+  ## Examples
+
+      iex>Polyn.SchemaStore.start_link(connection_name: :gnat)
+      :ok
   """
-  @spec save(conn :: Gnat.t(), type :: binary(), schema :: map()) :: :ok
-  @spec save(conn :: Gnat.t(), type :: binary(), schema :: map(), opts :: keyword()) :: :ok
-  def save(conn, type, schema, opts \\ []) when is_map(schema) do
+  @spec start_link(opts :: [option()]) :: GenServer.on_start()
+  def start_link(opts) do
+    {store_args, server_opts} = Keyword.split(opts, [:schemas, :store_name, :connection_name])
+    # For applications and application testing there should only be one SchemaStore running.
+    # For testing the library there could be multiple
+    process_name = Keyword.get(store_args, :store_name) |> process_name()
+    server_opts = Keyword.put_new(server_opts, :name, process_name)
+    GenServer.start_link(__MODULE__, store_args, server_opts)
+  end
+
+  # Get a process name for a given store name
+  @doc false
+  def process_name(nil), do: __MODULE__
+  def process_name(store_name) when is_binary(store_name), do: String.to_atom(store_name)
+  def process_name(store_name) when is_atom(store_name), do: store_name
+
+  @doc false
+  @spec get_schemas(pid()) :: map()
+  def get_schemas(pid) do
+    GenServer.call(pid, :get_schemas)
+  end
+
+  # Persist a schema. In prod/dev schemas should have already been persisted via
+  # the Polyn CLI.
+  @doc false
+  @spec save(pid :: pid(), type :: binary(), schema :: map()) :: :ok
+  def save(pid, type, schema) when is_map(schema) do
     is_json_schema?(schema)
-    KV.create_key(conn, store_name(opts), type, encode(schema))
+    GenServer.call(pid, {:save, type, encode(schema)})
   end
 
   defp is_json_schema?(schema) do
@@ -33,33 +70,18 @@ defmodule Polyn.SchemaStore do
     end
   end
 
-  @doc """
-  Remove a schema
-  """
-  @spec delete(conn :: Gnat.t(), type :: binary()) :: :ok
-  @spec delete(conn :: Gnat.t(), type :: binary(), opts :: keyword()) :: :ok
-  def delete(conn, type, opts \\ []) do
-    KV.purge_key(conn, store_name(opts), type)
+  # Remove a schema
+  @doc false
+  @spec delete(pid :: pid(), type :: binary()) :: :ok
+  def delete(pid, type) do
+    GenServer.call(pid, {:delete, type})
   end
 
-  @doc """
-  Get the schema for an event
-  """
-  @spec get(conn :: Gnat.t(), type :: binary()) :: nil | map()
-  @spec get(conn :: Gnat.t(), type :: binary(), opts :: keyword()) :: nil | map()
-  def get(conn, type, opts \\ []) do
-    case KV.get_value(conn, store_name(opts), type) do
-      {:error, %{"description" => "no message found"}} ->
-        nil
-
-      {:error, %{"description" => "stream not found"}} ->
-        raise Polyn.SchemaException,
-              "The Schema Store has not been setup on your NATS server. " <>
-                "Make sure you use the Polyn CLI to create it"
-
-      {:error, reason} ->
-        raise Polyn.SchemaException, inspect(reason)
-
+  # Get the schema for an event
+  @doc false
+  @spec get(pid :: pid(), type :: binary()) :: nil | map()
+  def get(pid, type) do
+    case GenServer.call(pid, {:get, type}) do
       nil ->
         nil
 
@@ -68,10 +90,9 @@ defmodule Polyn.SchemaStore do
     end
   end
 
-  @doc """
-  Create the schema store if it doesn't exist already. In prod/dev the the store
-  creation should have already been done via the Polyn CLI
-  """
+  # Create the schema store if it doesn't exist already. In prod/dev the the store
+  # creation should have already been done via the Polyn CLI
+  @doc false
   @spec create_store(conn :: Gnat.t()) :: :ok
   @spec create_store(conn :: Gnat.t(), opts :: keyword()) :: :ok
   def create_store(conn, opts \\ []) do
@@ -89,19 +110,57 @@ defmodule Polyn.SchemaStore do
     end
   end
 
-  @doc """
-  Delete the schema store. Useful for test
-  """
+  # Delete the schema store. Useful for test
+  @doc false
   @spec delete_store(conn :: Gnat.t()) :: :ok
   @spec delete_store(conn :: Gnat.t(), opts :: keyword()) :: :ok
   def delete_store(conn, opts \\ []) do
     KV.delete_bucket(conn, store_name(opts))
   end
 
-  @doc """
-  Get a configured store name or the default
-  """
+  # Get a configured store name or the default
+  @doc false
   def store_name(opts \\ []) do
     Keyword.get(opts, :name, @store_name)
+  end
+
+  @impl GenServer
+  def init(init_args) do
+    store_name = Keyword.get(init_args, :store_name, @store_name)
+    conn = Keyword.fetch!(init_args, :connection_name)
+    preloaded_schemas = Keyword.get(init_args, :schemas)
+
+    schemas = preloaded_schemas || load_schemas(conn, store_name)
+
+    {:ok, %{conn: conn, store_name: store_name, schemas: schemas}}
+  end
+
+  defp load_schemas(conn, store_name) do
+    case KV.contents(conn, store_name) do
+      {:ok, schemas} ->
+        schemas
+
+      {:error, reason} ->
+        raise Polyn.SchemaException, reason
+    end
+  end
+
+  @impl GenServer
+  def handle_call(:get_schemas, _from, state) do
+    {:reply, state.schemas, state}
+  end
+
+  def handle_call({:save, type, schema}, _from, state) do
+    schemas = Map.put(state.schemas, type, schema)
+    {:reply, :ok, %{state | schemas: schemas}}
+  end
+
+  def handle_call({:get, type}, _from, state) do
+    {:reply, Map.get(state.schemas, type), state}
+  end
+
+  def handle_call({:delete, type}, _from, state) do
+    schemas = Map.delete(state.schemas, type)
+    {:reply, :ok, %{state | schemas: schemas}}
   end
 end

@@ -184,9 +184,7 @@ defmodule Polyn.PullConsumer do
 
   @impl Jetstream.PullConsumer
   def handle_message(message, %{module: module, state: state} = internal_state) do
-    conn = Map.fetch!(internal_state, :connection_name)
-
-    case JSON.deserialize(message.body, conn, store_name: internal_state.store_name) do
+    case JSON.deserialize(message.body, store_name: internal_state.store_name) do
       {:ok, event} ->
         {response, state} = module.handle_message(event, message, state)
 
@@ -206,7 +204,7 @@ defmodule Polyn.PullConsumer do
     %{
       module: module,
       state: nil,
-      store_name: store_name(opts),
+      store_name: Keyword.get(opts, :store_name),
       connection_name: Keyword.fetch!(opts, :connection_name),
       type: Keyword.fetch!(opts, :type),
       source: Keyword.get(opts, :source)
@@ -221,9 +219,5 @@ defmodule Polyn.PullConsumer do
     consumer_name = Polyn.Naming.consumer_name(type, source)
     stream = Polyn.Naming.lookup_stream_name!(connection_name, type)
     [connection_name: connection_name, stream_name: stream, consumer_name: consumer_name]
-  end
-
-  defp store_name(opts) do
-    Keyword.get(opts, :store_name, Polyn.SchemaStore.store_name())
   end
 end

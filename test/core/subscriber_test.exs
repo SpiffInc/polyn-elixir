@@ -9,25 +9,31 @@ defmodule Polyn.SubscriberTest do
   @store_name "SUBSCRIBER_TEST_STORE"
 
   setup do
-    :ok = SchemaStore.create_store(@conn_name, name: @store_name)
+    start_supervised!(
+      {SchemaStore,
+       [
+         store_name: @store_name,
+         connection_name: :foo,
+         schemas: %{
+           "subscriber.test.event.v1" =>
+             Jason.encode!(%{
+               "type" => "object",
+               "required" => ["type"],
+               "properties" => %{
+                 "data" => %{
+                   "type" => "object",
+                   "properties" => %{
+                     "name" => %{"type" => "string"},
+                     "element" => %{"type" => "string"}
+                   }
+                 }
+               }
+             })
+         }
+       ]}
+    )
 
-    add_schema("subscriber.test.event.v1", %{
-      "type" => "object",
-      "required" => ["type"],
-      "properties" => %{
-        "data" => %{
-          "type" => "object",
-          "properties" => %{
-            "name" => %{"type" => "string"},
-            "element" => %{"type" => "string"}
-          }
-        }
-      }
-    })
-
-    on_exit(fn ->
-      cleanup()
-    end)
+    :ok
   end
 
   defmodule ExampleSubscriber do
@@ -93,18 +99,6 @@ defmodule Polyn.SubscriberTest do
     }
     """)
 
-    assert_receive({:DOWN, ^ref, :process, ^pid, {%Polyn.ValidationException{}, _stack}})
-  end
-
-  defp add_schema(type, schema) do
-    SchemaStore.save(@conn_name, type, schema, name: @store_name)
-  end
-
-  defp cleanup do
-    # Manage connection on our own here, because all supervised processes will be
-    # closed by the time `on_exit` runs
-    {:ok, pid} = Gnat.start_link()
-    SchemaStore.delete_store(pid, name: @store_name)
-    Gnat.stop(pid)
+    assert_receive({:DOWN, ^ref, :process, ^pid, {%Polyn.ValidationException{}, _stack}}, 500)
   end
 end
