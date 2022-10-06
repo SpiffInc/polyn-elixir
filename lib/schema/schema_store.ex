@@ -152,7 +152,7 @@ defmodule Polyn.SchemaStore do
         schemas
 
       {:error, reason} ->
-        raise Polyn.SchemaException, reason
+        raise Polyn.SchemaException, inspect(reason)
     end
   end
 
