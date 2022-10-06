@@ -9,6 +9,14 @@ defmodule Polyn.SchemaStoreTest do
 
   @store_name "POLYN_SCHEMAS_SCHEMA_STORE_TEST"
 
+  setup do
+    on_exit(fn ->
+      cleanup(fn pid ->
+        delete_store(pid)
+      end)
+    end)
+  end
+
   describe "start_link/1" do
     test "loads schema on init" do
       assert :ok = SchemaStore.create_store(@conn_name, name: @store_name)
@@ -21,27 +29,22 @@ defmodule Polyn.SchemaStoreTest do
         )
 
       assert SchemaStore.get_schemas(store) == %{"foo" => "bar"}
-
-      delete_store()
     end
   end
 
   describe "create_store/0" do
     test "creates a store" do
       assert :ok = SchemaStore.create_store(@conn_name, name: @store_name)
-      delete_store()
     end
 
     test "called multiple times won't break" do
       assert :ok = SchemaStore.create_store(@conn_name, name: @store_name)
       assert :ok = SchemaStore.create_store(@conn_name, name: @store_name)
-      delete_store()
     end
 
     test "handles when store already exists with different config" do
       KV.create_bucket(@conn_name, @store_name, description: "foo")
       assert :ok = SchemaStore.create_store(@conn_name, name: @store_name)
-      delete_store()
     end
   end
 
@@ -57,7 +60,6 @@ defmodule Polyn.SchemaStoreTest do
                )
 
       assert SchemaStore.get(store, "foo.bar") == %{"type" => "null"}
-      delete_store()
     end
 
     test "updates already existing", %{store: store} do
@@ -76,7 +78,6 @@ defmodule Polyn.SchemaStoreTest do
                )
 
       assert SchemaStore.get(store, "foo.bar") == %{"type" => "null"}
-      delete_store()
     end
 
     test "error if not a JSONSchema document", %{store: store} do
@@ -87,8 +88,6 @@ defmodule Polyn.SchemaStoreTest do
           SchemaStore.save(store, "foo.bar", %{"type" => "not-a-valid-type"})
         end
       )
-
-      delete_store()
     end
   end
 
@@ -122,7 +121,6 @@ defmodule Polyn.SchemaStoreTest do
 
     test "returns nil if not found", %{store: store} do
       assert SchemaStore.get(store, "foo.bar") == nil
-      delete_store()
     end
   end
 
@@ -141,7 +139,7 @@ defmodule Polyn.SchemaStoreTest do
     Map.put(context, :store, store)
   end
 
-  defp delete_store do
-    assert :ok = SchemaStore.delete_store(@conn_name, name: @store_name)
+  defp delete_store(pid) do
+    :ok = SchemaStore.delete_store(pid, name: @store_name)
   end
 end
