@@ -116,7 +116,7 @@ defmodule Polyn.SchemaStore do
       {:ok, _info} -> :ok
       # If some other client created the store first, with a slightly different
       # description or config we'll just use the existing one
-      {:error, %{"description" => "stream name already in use"}} -> :ok
+      {:error, %{"err_code" => 10_058}} -> :ok
       {:error, reason} -> raise Polyn.SchemaException, inspect(reason)
     end
   end
