@@ -12,12 +12,12 @@ defmodule Polyn.MockNats do
     GenServer.start_link(__MODULE__, arg)
   end
 
-  def get_messages(conn) do
-    GenServer.call(conn, :get_messages)
+  def get_messages do
+    GenServer.call(lookup_nats_server(), :get_messages)
   end
 
-  def get_subscribers(conn) do
-    GenServer.call(conn, :get_subscribers)
+  def get_subscribers do
+    GenServer.call(lookup_nats_server(), :get_subscribers)
   end
 
   def get_state do
@@ -25,23 +25,23 @@ defmodule Polyn.MockNats do
   end
 
   @impl Polyn.NatsBehaviour
-  def pub(conn, subject, data, opts \\ []) do
-    GenServer.call(conn, {:pub, subject, data, opts})
+  def pub(_conn, subject, data, opts \\ []) do
+    GenServer.call(lookup_nats_server(), {:pub, subject, data, opts})
   end
 
   @impl Polyn.NatsBehaviour
-  def sub(conn, subscriber, subject, opts \\ []) do
-    GenServer.call(conn, {:sub, subscriber, subject, opts})
+  def sub(_conn, subscriber, subject, opts \\ []) do
+    GenServer.call(lookup_nats_server(), {:sub, subscriber, subject, opts})
   end
 
   @impl Polyn.NatsBehaviour
-  def unsub(conn, sid, opts \\ []) do
-    GenServer.call(conn, {:unsub, sid, opts})
+  def unsub(_conn, sid, opts \\ []) do
+    GenServer.call(lookup_nats_server(), {:unsub, sid, opts})
   end
 
   @impl Polyn.NatsBehaviour
   def request(conn, subject, data, opts \\ []) do
-    {:ok, inbox} = GenServer.call(conn, {:request, self(), subject, data, opts})
+    {:ok, inbox} = GenServer.call(lookup_nats_server(), {:request, self(), subject, data, opts})
 
     result =
       receive do
