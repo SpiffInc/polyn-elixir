@@ -188,6 +188,10 @@ defmodule Polyn do
   end
 
   defp nats do
-    Application.get_env(:polyn, :nats, Gnat)
+    if sandbox(), do: Polyn.MockNats, else: Gnat
+  end
+
+  defp sandbox do
+    Application.get_env(:polyn, :sandbox, false)
   end
 end
