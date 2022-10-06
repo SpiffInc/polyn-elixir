@@ -5,23 +5,8 @@ defmodule Polyn.Nats do
 
   @behaviour Polyn.NatsBehaviour
 
-  @impl Polyn.NatsBehaviour
-  def pub(conn, subject, data, opts \\ []) do
-    Gnat.pub(conn, subject, data, opts)
-  end
-
-  @impl Polyn.NatsBehaviour
-  def sub(conn, subscriber, subject, opts \\ []) do
-    Gnat.sub(conn, subscriber, subject, opts)
-  end
-
-  @impl Polyn.NatsBehaviour
-  def request(conn, subject, data, opts \\ []) do
-    Gnat.request(conn, subject, data, opts)
-  end
-
-  @impl Polyn.NatsBehaviour
-  def unsub(conn, sid, opts \\ []) do
-    Gnat.unsub(conn, sid, opts)
-  end
+  defdelegate pub(conn, subject, data, opts \\ []), to: Gnat
+  defdelegate sub(conn, subscriber, subject, opts \\ []), to: Gnat
+  defdelegate unsub(conn, sid, opts \\ []), to: Gnat
+  defdelegate request(conn, subject, data, opts \\ []), to: Gnat
 end
