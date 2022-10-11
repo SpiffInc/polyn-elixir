@@ -64,26 +64,25 @@ defmodule Polyn.Subscriber do
           GenServer.on_start()
   def start_link(module, init_args, options) do
     {sub_opts, genserver_opts} =
-      Keyword.split(options, [:connection_name, :event, :queue_group, :store_name])
+      Keyword.split(options, [:connection_name, :event, :queue_group, :store_name, :sandbox])
 
     GenServer.start_link(__MODULE__, {module, init_args, sub_opts}, genserver_opts)
   end
 
   @impl true
   def init({module, init_args, opts}) do
-    {opts, sub_opts} = Keyword.split(opts, [:connection_name, :event, :store_name])
+    {opts, sub_opts} = Keyword.split(opts, [:connection_name, :event, :store_name, :sandbox])
 
-    case sub(Keyword.fetch!(opts, :connection_name), Keyword.fetch!(opts, :event), sub_opts) do
+    conn = Keyword.fetch!(opts, :connection_name)
+    event = Keyword.fetch!(opts, :event)
+
+    case nats(opts).sub(conn, self(), event, sub_opts) do
       {:ok, subscription} ->
         on_subscribe_success(subscription, module, init_args, opts)
 
       {:error, reason} ->
         {:stop, reason}
     end
-  end
-
-  defp sub(conn, event, opts) do
-    Gnat.sub(conn, self(), event, opts)
   end
 
   defp on_subscribe_success(subscription, module, init_args, opts) do
@@ -125,6 +124,19 @@ defmodule Polyn.Subscriber do
 
       other ->
         other
+    end
+  end
+
+  defp nats(opts) do
+    if sandbox(opts), do: Polyn.MockNats, else: Gnat
+  end
+
+  # If Application config dictates "sandbox mode" we prioritize that
+  # otherwise we defer to a passed in option
+  defp sandbox(opts) do
+    case Application.get_env(:polyn, :sandbox) do
+      nil -> Keyword.get(opts, :sandbox, false)
+      other -> other
     end
   end
 end

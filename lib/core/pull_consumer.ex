@@ -35,6 +35,8 @@ defmodule Polyn.PullConsumer do
   use Jetstream.PullConsumer
   alias Polyn.Serializers.JSON
 
+  defstruct [:module, :state, :store_name, :connection_name, :type, :source]
+
   @doc """
   Invoked when the server is started. `start_link/3` or `start/3` will block until it returns.
 
@@ -106,6 +108,11 @@ defmodule Polyn.PullConsumer do
     end
   end
 
+  defp new(module, opts) do
+    opts = Keyword.put(opts, :module, module)
+    struct(__MODULE__, opts)
+  end
+
   @doc """
   Starts a pull consumer linked to the current process with the given function.
 
@@ -128,11 +135,11 @@ defmodule Polyn.PullConsumer do
   """
   @spec start_link(module(), init_arg :: term(), options :: [option()]) ::
           GenServer.on_start()
-  def start_link(module, init_arg, options \\ []) when is_atom(module) and is_list(options) do
-    Jetstream.PullConsumer.start_link(
+  def start_link(module, init_arg, opts \\ []) when is_atom(module) and is_list(opts) do
+    pull_consumer(opts).start_link(
       __MODULE__,
-      {initial_state(module, options), init_arg},
-      options
+      {new(module, opts), init_arg},
+      opts
     )
   end
 
@@ -143,8 +150,8 @@ defmodule Polyn.PullConsumer do
   """
   @spec start(module(), init_arg :: term(), options :: [option()]) ::
           GenServer.on_start()
-  def start(module, init_arg, options \\ []) when is_atom(module) and is_list(options) do
-    Jetstream.PullConsumer.start(__MODULE__, {initial_state(module, options), init_arg}, options)
+  def start(module, init_arg, opts \\ []) when is_atom(module) and is_list(opts) do
+    pull_consumer(opts).start(__MODULE__, {new(module, opts), init_arg}, opts)
   end
 
   @doc """
@@ -164,7 +171,7 @@ defmodule Polyn.PullConsumer do
   """
   @spec close(consumer :: Jetstream.PullConsumer.consumer()) :: :ok
   def close(consumer) do
-    Jetstream.PullConsumer.close(consumer)
+    pull_consumer().close(consumer)
   end
 
   @impl Jetstream.PullConsumer
@@ -200,17 +207,6 @@ defmodule Polyn.PullConsumer do
     end
   end
 
-  defp initial_state(module, opts) do
-    %{
-      module: module,
-      state: nil,
-      store_name: Keyword.get(opts, :store_name),
-      connection_name: Keyword.fetch!(opts, :connection_name),
-      type: Keyword.fetch!(opts, :type),
-      source: Keyword.get(opts, :source)
-    }
-  end
-
   defp connection_options(%{
          type: type,
          source: source,
@@ -219,5 +215,18 @@ defmodule Polyn.PullConsumer do
     consumer_name = Polyn.Naming.consumer_name(type, source)
     stream = Polyn.Naming.lookup_stream_name!(connection_name, type)
     [connection_name: connection_name, stream_name: stream, consumer_name: consumer_name]
+  end
+
+  defp pull_consumer(opts \\ []) do
+    if sandbox(opts), do: Polyn.Jetstream.MockPullConsumer, else: Polyn.Jetstream.PullConsumer
+  end
+
+  # If Application config dictates "sandbox mode" we prioritize that
+  # otherwise we defer to a passed in option
+  defp sandbox(opts) do
+    case Application.get_env(:polyn, :sandbox) do
+      nil -> Keyword.get(opts, :sandbox, false)
+      other -> other
+    end
   end
 end

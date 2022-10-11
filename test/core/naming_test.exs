@@ -215,4 +215,61 @@ defmodule Polyn.NamingTest do
       Jetstream.API.Stream.delete(@conn_name, "FOO")
     end
   end
+
+  describe "subject_matches?/2" do
+    test "equal one token" do
+      assert Naming.subject_matches?("foo", "foo") == true
+    end
+
+    test "equal 3 tokens" do
+      assert Naming.subject_matches?("foo.bar.v1", "foo.bar.v1") == true
+    end
+
+    test "not equal 3 token" do
+      assert Naming.subject_matches?("foo.bar.v1", "bar.baz.v1") == false
+    end
+
+    test "equal with 1 wildcard" do
+      assert Naming.subject_matches?("foo.bar", "foo.*") == true
+    end
+
+    test "not equal with 1 wildcard" do
+      assert Naming.subject_matches?("foo", "foo.*") == false
+    end
+
+    test "equal with 2 wildcards" do
+      assert Naming.subject_matches?("foo.bar.baz", "foo.*.*") == true
+    end
+
+    test "not equal with 2 wildcards" do
+      assert Naming.subject_matches?("foo.bar", "foo.*.*") == false
+    end
+
+    test "equal with 1 multiple-wildcard" do
+      assert Naming.subject_matches?("foo.bar", "foo.>") == true
+    end
+
+    test "equal with 1 multiple-wildcard, multiple tokens" do
+      assert Naming.subject_matches?("foo.bar.baz.qux", "foo.>") == true
+    end
+
+    test "not equal with 1 multiple-wildcard, multiple tokens" do
+      assert Naming.subject_matches?("foo", "foo.bar.>") == false
+    end
+
+    test "equal with 1 single-wildcard and 1 multiple-wildcard, multiple tokens" do
+      assert Naming.subject_matches?("foo.bar.baz.qux", "foo.*.>") == true
+    end
+
+    test "equal with 2 single-wildcard and 1 multiple-wildcard, multiple tokens" do
+      assert Naming.subject_matches?(
+               "foo.bar.baz.qux.other.thing",
+               "foo.*.*.>"
+             ) == true
+    end
+
+    test "not equal with 2 single-wildcard and 1 multiple-wildcard, multiple tokens" do
+      assert Naming.subject_matches?("foo.bar", "foo.*.*.>") == false
+    end
+  end
 end

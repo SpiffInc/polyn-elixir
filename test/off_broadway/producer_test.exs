@@ -1,5 +1,6 @@
 defmodule OffBroadway.Polyn.ProducerTest do
-  use Polyn.ConnCase, async: true
+  # false for global sandbox
+  use Polyn.ConnCase, async: false
 
   alias Broadway.Message
   alias Jetstream.API.{Consumer, Stream}
@@ -13,6 +14,10 @@ defmodule OffBroadway.Polyn.ProducerTest do
   @consumer_name "user_backend_company_created_v1"
 
   setup do
+    start_supervised!(Polyn.Sandbox)
+    mock_nats = start_supervised!(Polyn.MockNats)
+    Polyn.Sandbox.setup_test(self(), mock_nats)
+
     start_supervised!(
       {SchemaStore,
        [
@@ -44,7 +49,10 @@ defmodule OffBroadway.Polyn.ProducerTest do
     {:ok, _response} = Consumer.create(@conn_name, consumer)
 
     on_exit(fn ->
-      cleanup()
+      cleanup(fn pid ->
+        :ok = Consumer.delete(pid, @stream_name, @consumer_name)
+        :ok = Stream.delete(pid, @stream_name)
+      end)
     end)
   end
 
@@ -60,7 +68,9 @@ defmodule OffBroadway.Polyn.ProducerTest do
             OffBroadway.Polyn.Producer,
             connection_name: :broadway_producer_test,
             type: "company.created.v1",
-            store_name: "BROADWAY_PRODUCER_TEST_SCHEMA_STORE"
+            store_name: "BROADWAY_PRODUCER_TEST_SCHEMA_STORE",
+            receive_interval: 1,
+            sandbox: Keyword.get(opts, :sandbox)
           }
         ],
         processors: [
@@ -76,137 +86,256 @@ defmodule OffBroadway.Polyn.ProducerTest do
     end
   end
 
-  test "valid messages are converted to Event structs" do
-    Gnat.pub(@conn_name, "company.created.v1", """
-    {
-      "id": "#{UUID.uuid4()}",
-      "source": "com.test.foo",
-      "type": "com.test.company.created.v1",
-      "specversion": "1.0.1",
-      "type": "com.test.company.created.v1",
-      "data": {
-        "name": "Toph",
-        "element": "earth"
+  describe "nats integration" do
+    test "valid messages are converted to Event structs" do
+      Gnat.pub(@conn_name, "company.created.v1", """
+      {
+        "id": "#{UUID.uuid4()}",
+        "source": "com.test.foo",
+        "type": "com.test.company.created.v1",
+        "specversion": "1.0.1",
+        "type": "com.test.company.created.v1",
+        "data": {
+          "name": "Toph",
+          "element": "earth"
+        }
       }
-    }
-    """)
+      """)
 
-    Gnat.pub(@conn_name, "company.created.v1", """
-    {
-      "id": "#{UUID.uuid4()}",
-      "source": "com.test.foo",
-      "type": "com.test.company.created.v1",
-      "specversion": "1.0.1",
-      "type": "com.test.company.created.v1",
-      "data": {
-        "name": "Katara",
-        "element": "water"
+      Gnat.pub(@conn_name, "company.created.v1", """
+      {
+        "id": "#{UUID.uuid4()}",
+        "source": "com.test.foo",
+        "type": "com.test.company.created.v1",
+        "specversion": "1.0.1",
+        "type": "com.test.company.created.v1",
+        "data": {
+          "name": "Katara",
+          "element": "water"
+        }
       }
-    }
-    """)
+      """)
 
-    start_pipeline()
+      start_pipeline()
 
-    assert_receive(
-      {:received_event,
-       %Message{
-         data: %Event{
-           type: "com.test.company.created.v1",
-           data: %{
-             "name" => "Katara",
-             "element" => "water"
+      assert_receive(
+        {:received_event,
+         %Message{
+           data: %Event{
+             type: "com.test.company.created.v1",
+             data: %{
+               "name" => "Katara",
+               "element" => "water"
+             }
            }
-         }
-       }}
-    )
+         }}
+      )
 
-    assert_receive(
-      {:received_event,
-       %Message{
-         data: %Event{
-           type: "com.test.company.created.v1",
-           data: %{
-             "name" => "Toph",
-             "element" => "earth"
+      assert_receive(
+        {:received_event,
+         %Message{
+           data: %Event{
+             type: "com.test.company.created.v1",
+             data: %{
+               "name" => "Toph",
+               "element" => "earth"
+             }
            }
-         }
-       }}
-    )
+         }}
+      )
+    end
+
+    test "valid messages are received after start" do
+      start_pipeline()
+
+      Gnat.pub(@conn_name, "company.created.v1", """
+      {
+        "id": "#{UUID.uuid4()}",
+        "source": "com.test.foo",
+        "type": "com.test.company.created.v1",
+        "specversion": "1.0.1",
+        "data": {
+          "name": "Toph",
+          "element": "earth"
+        }
+      }
+      """)
+
+      assert_receive(
+        {:received_event,
+         %Message{
+           data: %Event{
+             type: "com.test.company.created.v1",
+             data: %{
+               "name" => "Toph",
+               "element" => "earth"
+             }
+           }
+         }}
+      )
+    end
+
+    @tag capture_log: true
+    test "invalid message is ACKTERM and raises" do
+      bad_msg_id = UUID.uuid4()
+
+      Gnat.pub(@conn_name, "company.created.v1", """
+      {
+        "id": "#{bad_msg_id}",
+        "source": "com.test.foo",
+        "type": "com.test.company.created.v1",
+        "specversion": "1.0.1",
+        "data": {
+          "name": 123,
+          "element": true
+        }
+      }
+      """)
+
+      Gnat.pub(@conn_name, "company.created.v1", """
+      {
+        "id": "#{UUID.uuid4()}",
+        "source": "com.test.foo",
+        "type": "com.test.company.created.v1",
+        "specversion": "1.0.1",
+        "data": {
+          "name": "Toph",
+          "element": "earth"
+        }
+      }
+      """)
+
+      Gnat.sub(@conn_name, self(), "$JS.ACK.#{@stream_name}.#{@consumer_name}.>")
+
+      start_pipeline()
+
+      pid =
+        Broadway.producer_names(ExampleBroadwayPipeline)
+        |> Enum.at(0)
+        |> Process.whereis()
+
+      ref = Process.monitor(pid)
+
+      {:DOWN, _ref, :process, _pid, {%{message: message}, _stack}} =
+        assert_receive({:DOWN, ^ref, :process, ^pid, {%Polyn.ValidationException{}, _stack}})
+
+      assert message =~ "Polyn event #{bad_msg_id} from com.test.foo is not valid"
+
+      refute_receive(
+        {:received_event,
+         %Message{
+           data: %Event{
+             type: "com.test.company.created.v1",
+             data: %{
+               "name" => "Toph",
+               "element" => "earth"
+             }
+           }
+         }}
+      )
+
+      assert_receive({:msg, %{body: "+TERM"}})
+      assert_receive({:msg, %{body: "-NAK"}})
+    end
   end
 
-  @tag capture_log: true
-  test "invalid message is ACKTERM and raises" do
-    bad_msg_id = UUID.uuid4()
-
-    Gnat.pub(@conn_name, "company.created.v1", """
-    {
-      "id": "#{bad_msg_id}",
-      "source": "com.test.foo",
-      "type": "com.test.company.created.v1",
-      "specversion": "1.0.1",
-      "data": {
-        "name": 123,
-        "element": true
+  describe "mock integration" do
+    test "valid messages are converted to Event structs" do
+      Polyn.MockNats.pub(@conn_name, "company.created.v1", """
+      {
+        "id": "#{UUID.uuid4()}",
+        "source": "com.test.foo",
+        "type": "com.test.company.created.v1",
+        "specversion": "1.0.1",
+        "data": {
+          "name": "Toph",
+          "element": "earth"
+        }
       }
-    }
-    """)
+      """)
 
-    Gnat.pub(@conn_name, "company.created.v1", """
-    {
-      "id": "#{UUID.uuid4()}",
-      "source": "com.test.foo",
-      "type": "com.test.company.created.v1",
-      "specversion": "1.0.1",
-      "data": {
-        "name": "Toph",
-        "element": "earth"
-      }
-    }
-    """)
+      start_pipeline(sandbox: true)
 
-    Gnat.sub(@conn_name, self(), "$JS.ACK.#{@stream_name}.#{@consumer_name}.>")
-
-    start_pipeline()
-
-    pid =
-      Broadway.producer_names(ExampleBroadwayPipeline)
-      |> Enum.at(0)
-      |> Process.whereis()
-
-    ref = Process.monitor(pid)
-
-    {:DOWN, _ref, :process, _pid, {%{message: message}, _stack}} =
-      assert_receive({:DOWN, ^ref, :process, ^pid, {%Polyn.ValidationException{}, _stack}})
-
-    assert message =~ "Polyn event #{bad_msg_id} from com.test.foo is not valid"
-
-    refute_receive(
-      {:received_event,
-       %Message{
-         data: %Event{
-           type: "com.test.company.created.v1",
-           data: %{
-             "name" => "Toph",
-             "element" => "earth"
+      assert_receive(
+        {:received_event,
+         %Message{
+           data: %Event{
+             type: "com.test.company.created.v1",
+             data: %{
+               "name" => "Toph",
+               "element" => "earth"
+             }
            }
-         }
-       }}
+         }}
+      )
+    end
+
+    test "valid messages are received after start" do
+      start_pipeline(sandbox: true)
+
+      Polyn.MockNats.pub(@conn_name, "company.created.v1", """
+      {
+        "id": "#{UUID.uuid4()}",
+        "source": "com.test.foo",
+        "type": "com.test.company.created.v1",
+        "specversion": "1.0.1",
+        "data": {
+          "name": "Toph",
+          "element": "earth"
+        }
+      }
+      """)
+
+      assert_receive(
+        {:received_event,
+         %Message{
+           data: %Event{
+             type: "com.test.company.created.v1",
+             data: %{
+               "name" => "Toph",
+               "element" => "earth"
+             }
+           }
+         }}
+      )
+    end
+
+    @tag capture_log: true
+    test "invalid message is ACKTERM and raises" do
+      bad_msg_id = UUID.uuid4()
+
+      Polyn.MockNats.pub(@conn_name, "company.created.v1", """
+      {
+        "id": "#{bad_msg_id}",
+        "source": "com.test.foo",
+        "type": "com.test.company.created.v1",
+        "specversion": "1.0.1",
+        "data": {
+          "name": 123,
+          "element": true
+        }
+      }
+      """)
+
+      start_pipeline(sandbox: true)
+
+      pid =
+        Broadway.producer_names(ExampleBroadwayPipeline)
+        |> Enum.at(0)
+        |> Process.whereis()
+
+      ref = Process.monitor(pid)
+
+      {:DOWN, _ref, :process, _pid, {%{message: message}, _stack}} =
+        assert_receive({:DOWN, ^ref, :process, ^pid, {%Polyn.ValidationException{}, _stack}})
+
+      assert message =~ "Polyn event #{bad_msg_id} from com.test.foo is not valid"
+    end
+  end
+
+  defp start_pipeline(opts \\ []) do
+    start_supervised!(
+      {ExampleBroadwayPipeline, test_pid: self(), sandbox: Keyword.get(opts, :sandbox, false)}
     )
-
-    assert_receive({:msg, %{body: "+TERM"}})
-    assert_receive({:msg, %{body: "-NAK"}})
-  end
-
-  defp start_pipeline do
-    start_supervised!({ExampleBroadwayPipeline, test_pid: self()})
-  end
-
-  defp cleanup do
-    # Manage connection on our own here, because all supervised processes will be
-    # closed by the time `on_exit` runs
-    {:ok, pid} = Gnat.start_link()
-    :ok = Consumer.delete(pid, @stream_name, @consumer_name)
-    :ok = Stream.delete(pid, @stream_name)
-    Gnat.stop(pid)
   end
 end

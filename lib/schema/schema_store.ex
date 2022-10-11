@@ -5,6 +5,17 @@ defmodule Polyn.SchemaStore do
 
   You will need this running, likely in your application supervision tree, in order for
   Polyn to access schemas
+
+  ## Examples
+
+      ```elixir
+      children = [
+        {Polyn.SchemaStore, connection_name: :connection_name_or_pid}
+      ]
+
+      opts = [strategy: :one_for_one, name: MySupervisor]
+      Supervisor.start_link(children, opts)
+      ```
   """
 
   use GenServer
@@ -105,7 +116,7 @@ defmodule Polyn.SchemaStore do
       {:ok, _info} -> :ok
       # If some other client created the store first, with a slightly different
       # description or config we'll just use the existing one
-      {:error, %{"description" => "stream name already in use"}} -> :ok
+      {:error, %{"err_code" => 10_058}} -> :ok
       {:error, reason} -> raise Polyn.SchemaException, inspect(reason)
     end
   end
@@ -141,7 +152,7 @@ defmodule Polyn.SchemaStore do
         schemas
 
       {:error, reason} ->
-        raise Polyn.SchemaException, reason
+        raise Polyn.SchemaException, inspect(reason)
     end
   end
 

@@ -110,7 +110,7 @@ In your `test_helper.ex` add the following:
 Polyn.Sandbox.start_link()
 ```
 
-In each test add
+In tests that interact with Polyn add
 
 ```elixir
 import Polyn.Testing
