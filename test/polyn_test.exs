@@ -1,5 +1,6 @@
 defmodule PolynTest do
   use Polyn.ConnCase, async: true
+  use Polyn.TracingCase
 
   alias Polyn.Event
   alias Polyn.SchemaStore
@@ -63,6 +64,29 @@ defmodule PolynTest do
 
       data = get_message()
       assert data["source"] == "com:test:user:backend:orders"
+    end
+
+    test "makes a tracing span" do
+      start_collecting_spans()
+
+      Gnat.sub(@conn_name, self(), "pub.test.event.v1")
+      Polyn.pub(@conn_name, "pub.test.event.v1", "foo", store_name: @store_name, source: "orders")
+
+      data = get_message()
+
+      span_attrs =
+        expected_span_attributes([
+          {"messaging.system", "NATS"},
+          {"messaging.destination", "pub.test.event.v1"},
+          {"messaging.protocol", "Polyn"},
+          {"messaging.url", "127.0.0.1"},
+          {"messaging.message_id", data["id"]},
+          {"messaging.message_payload_size_bytes", byte_size(Jason.encode!(data))}
+        ])
+
+      assert_receive(
+        {:span, span(name: "pub.test.event.v1 send", kind: "PRODUCER", attributes: ^span_attrs)}
+      )
     end
 
     test "builds up polyntrace if :triggered_by is supplied" do

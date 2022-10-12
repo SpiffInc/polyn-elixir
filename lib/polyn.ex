@@ -5,6 +5,8 @@ defmodule Polyn do
   based services.
   """
 
+  require OpenTelemetry.Tracer, as: Tracer
+
   alias Polyn.Event
   alias Polyn.Serializers.JSON
 
@@ -65,11 +67,24 @@ defmodule Polyn do
   @spec pub(conn :: Gnat.t(), event_type :: binary(), data :: any(), opts :: list(pub_options())) ::
           :ok
   def pub(conn, event_type, data, opts \\ []) do
-    event = build_event(event_type, data, opts)
+    Tracer.with_span "#{event_type} send", kind: "PRODUCER" do
+      event = build_event(event_type, data, opts)
 
-    opts = add_nats_msg_id_header(opts, event)
+      json = JSON.serialize!(event, opts)
 
-    nats().pub(conn, event_type, JSON.serialize!(event, opts), remove_polyn_opts(opts))
+      Tracer.set_attributes(%{
+        "messaging.system" => "NATS",
+        "messaging.destination" => event_type,
+        "messaging.protocol" => "Polyn",
+        "messaging.url" => Gnat.server_info(conn).client_ip,
+        "messaging.message_id" => event.id,
+        "messaging.message_payload_size_bytes" => byte_size(json)
+      })
+
+      opts = add_nats_msg_id_header(opts, event)
+
+      nats().pub(conn, event_type, json, remove_polyn_opts(opts))
+    end
   end
 
   @doc """
