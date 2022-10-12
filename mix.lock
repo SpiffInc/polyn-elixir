@@ -21,6 +21,8 @@
   "nimble_options": {:hex, :nimble_options, "0.4.0", "c89babbab52221a24b8d1ff9e7d838be70f0d871be823165c94dd3418eea728f", [:mix], [], "hexpm", "e6701c1af326a11eea9634a3b1c62b475339ace9456c1a23ec3bc9a847bca02d"},
   "nimble_parsec": {:hex, :nimble_parsec, "1.2.3", "244836e6e3f1200c7f30cb56733fd808744eca61fd182f731eac4af635cc6d0b", [:mix], [], "hexpm", "c8d789e39b9131acf7b99291e93dae60ab48ef14a7ee9d58c6964f59efb570b0"},
   "nkeys": {:hex, :nkeys, "0.2.1", "c183105135de9d0c07d649f6a13e39792b095772cdbeaacf37dea4e35b647100", [:mix], [{:ed25519, "~> 1.3", [hex: :ed25519, repo: "hexpm", optional: false]}], "hexpm", "946551188bd103559e5129835f782f32ea26027d0ee7063eb6910ffd707fc1aa"},
+  "opentelemetry": {:hex, :opentelemetry, "1.1.1", "02de53d7dcafc087793ddf98cac946aaaa13c99cb6a7e568d9bb5ce4552b340e", [:rebar3], [{:opentelemetry_api, "~> 1.1", [hex: :opentelemetry_api, repo: "hexpm", optional: false]}], "hexpm", "43a807d536bca55542731ddb5ecf68c0b3b433ff98713a6496058075bac70031"},
+  "opentelemetry_api": {:hex, :opentelemetry_api, "1.1.0", "156366bfbf249f54daf2626e087e29ad91201eab670993fd9ae1bd278d03a096", [:mix, :rebar3], [], "hexpm", "e0d0b49e21e5785da675c97104c385283cae84fcc0d8522932a5dcf55489ead1"},
   "telemetry": {:hex, :telemetry, "1.1.0", "a589817034a27eab11144ad24d5c0f9fab1f58173274b1e9bae7074af9cbee51", [:rebar3], [], "hexpm", "b727b2a1f75614774cff2d7565b64d0dfa5bd52ba517f16543e6fc7efcc0df48"},
   "uuid": {:hex, :uuid, "1.1.8", "e22fc04499de0de3ed1116b770c7737779f226ceefa0badb3592e64d5cfb4eb9", [:mix], [], "hexpm", "c790593b4c3b601f5dc2378baae7efaf5b3d73c4c6456ba85759905be792f2ac"},
 }

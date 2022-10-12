@@ -52,6 +52,9 @@ defmodule Polyn.MixProject do
       {:broadway, "~> 1.0", optional: true},
       {:ex_json_schema, "~> 0.9.1"},
       {:jason, "~> 1.2"},
+      {:opentelemetry_api, "~> 1.0"},
+      # This will allow us to actually test and inspect the collected spans in a test
+      {:opentelemetry, "~> 1.0", only: :test},
       {:uuid, "~> 1.1"},
       {:mox, "~> 1.0", only: :test},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
