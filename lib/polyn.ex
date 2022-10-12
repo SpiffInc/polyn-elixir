@@ -6,6 +6,7 @@ defmodule Polyn do
   """
 
   require OpenTelemetry.Tracer, as: Tracer
+  require Polyn.Tracing
 
   alias Polyn.Event
   alias Polyn.Serializers.JSON
@@ -67,7 +68,7 @@ defmodule Polyn do
   @spec pub(conn :: Gnat.t(), event_type :: binary(), data :: any(), opts :: list(pub_options())) ::
           :ok
   def pub(conn, event_type, data, opts \\ []) do
-    Tracer.with_span "#{event_type} send", kind: "PRODUCER" do
+    Polyn.Tracing.publish_span event_type do
       event = build_event(event_type, data, opts)
 
       json = JSON.serialize!(event, opts)
