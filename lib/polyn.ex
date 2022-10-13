@@ -5,8 +5,7 @@ defmodule Polyn do
   based services.
   """
 
-  require OpenTelemetry.Tracer, as: Tracer
-  require Polyn.Tracing
+  use Polyn.Tracing, as: Tracing
 
   alias Polyn.Event
   alias Polyn.Serializers.JSON
@@ -73,14 +72,7 @@ defmodule Polyn do
 
       json = JSON.serialize!(event, opts)
 
-      Tracer.set_attributes(%{
-        "messaging.system" => "NATS",
-        "messaging.destination" => event_type,
-        "messaging.protocol" => "Polyn",
-        "messaging.url" => Gnat.server_info(conn).client_ip,
-        "messaging.message_id" => event.id,
-        "messaging.message_payload_size_bytes" => byte_size(json)
-      })
+      Polyn.Tracing.span_attributes(conn: conn, type: event_type, event: event, payload: json)
 
       opts = add_nats_msg_id_header(opts, event)
 

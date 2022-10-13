@@ -9,7 +9,7 @@ defmodule Polyn.TracingCase do
   # Use Record module to extract fields of the Span record from the opentelemetry dependency.
   require Record
   @fields Record.extract(:span, from: "deps/opentelemetry/include/otel_span.hrl")
-  # Define macros for `Span`.
+  # Define macros for `Span` including a `span` function for generating expected span structure.
   Record.defrecord(:span, @fields)
 
   using(_opts) do
