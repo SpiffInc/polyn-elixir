@@ -72,7 +72,13 @@ defmodule PolynTest do
       Gnat.sub(@conn_name, self(), "pub.test.event.v1")
       Polyn.pub(@conn_name, "pub.test.event.v1", "foo", store_name: @store_name, source: "orders")
 
-      data = get_message()
+      msg =
+        receive do
+          {:msg, msg} ->
+            msg
+        end
+
+      data = Jason.decode!(msg.body)
 
       span_attrs =
         expected_span_attributes([
@@ -81,12 +87,15 @@ defmodule PolynTest do
           {"messaging.protocol", "Polyn"},
           {"messaging.url", "127.0.0.1"},
           {"messaging.message_id", data["id"]},
-          {"messaging.message_payload_size_bytes", byte_size(Jason.encode!(data))}
+          {"messaging.message_payload_size_bytes", byte_size(msg.body)}
         ])
 
       assert_receive(
         {:span, span(name: "pub.test.event.v1 send", kind: "PRODUCER", attributes: ^span_attrs)}
       )
+
+      # trace_id and span_id get encoded so there's not a good way to test that they match
+      assert Enum.any?(msg.headers, fn {key, _value} -> key == "traceparent" end)
     end
 
     test "builds up polyntrace if :triggered_by is supplied" do

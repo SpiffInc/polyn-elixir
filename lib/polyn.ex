@@ -74,7 +74,9 @@ defmodule Polyn do
 
       Polyn.Tracing.span_attributes(conn: conn, type: event_type, event: event, payload: json)
 
-      opts = add_nats_msg_id_header(opts, event)
+      opts =
+        add_nats_msg_id_header(opts, event)
+        |> inject_trace_header()
 
       nats().pub(conn, event_type, json, remove_polyn_opts(opts))
     end
@@ -192,6 +194,11 @@ defmodule Polyn do
       Keyword.get(opts, :headers, [])
       |> Enum.concat([{"Nats-Msg-Id", event.id}])
 
+    Keyword.put(opts, :headers, headers)
+  end
+
+  defp inject_trace_header(opts) do
+    headers = Polyn.Tracing.add_trace_header(opts[:headers])
     Keyword.put(opts, :headers, headers)
   end
 

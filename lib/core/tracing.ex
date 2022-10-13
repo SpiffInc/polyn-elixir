@@ -39,17 +39,12 @@ defmodule Polyn.Tracing do
     end
   end
 
-  ##
-  # Common attributes to add to a span involving an individual message
-  # https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/messaging/#messaging-attributes
-  # def self.span_attributes(span, nats:, type:, event:, payload:)
-  #   span.add_attributes({
-  #     "messaging.system"                     => "NATS",
-  #     "messaging.destination"                => type,
-  #     "messaging.protocol"                   => "Polyn",
-  #     "messaging.url"                        => nats.uri.to_s,
-  #     "messaging.message_id"                 => event.id,
-  #     "messaging.message_payload_size_bytes" => payload.bytesize,
-  #   })
-  # end
+  @doc """
+  Add a `traceparent` header to the headers for a message so that the
+  subscribers can be connected with it
+  https://www.w3.org/TR/trace-context/#traceparent-header
+  """
+  def add_trace_header(headers) do
+    :otel_propagator_text_map.inject(headers)
+  end
 end
