@@ -15,6 +15,8 @@ defmodule Polyn.Tracing do
   Start a span for publishing an event
   """
   defmacro publish_span(type, do: block) do
+    block = record_exceptions(block)
+
     quote do
       OpenTelemetry.Tracer.with_span("#{unquote(type)} send", %{kind: "PRODUCER"},
         do: unquote(block)
@@ -46,5 +48,19 @@ defmodule Polyn.Tracing do
   """
   def add_trace_header(headers) do
     :otel_propagator_text_map.inject(headers)
+  end
+
+  # Any errors that happen, expecially validation errors, we want the span to record so observability tools
+  # will show the error
+  defp record_exceptions(block) do
+    quote do
+      try do
+        unquote(block)
+      rescue
+        e ->
+          OpenTelemetry.Tracer.record_exception(e, __STACKTRACE__)
+          raise e
+      end
+    end
   end
 end

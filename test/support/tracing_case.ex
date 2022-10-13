@@ -8,9 +8,19 @@ defmodule Polyn.TracingCase do
 
   # Use Record module to extract fields of the Span record from the opentelemetry dependency.
   require Record
-  @fields Record.extract(:span, from: "deps/opentelemetry/include/otel_span.hrl")
+  @span_fields Record.extract(:span, from: "deps/opentelemetry/include/otel_span.hrl")
+  @attribute_fields Record.extract(:attributes, from: "deps/opentelemetry/src/otel_attributes.erl")
+  @event_fields Record.extract(:event, from: "deps/opentelemetry/include/otel_span.hrl")
+  @events_fields Record.extract(:events,
+                   from: "deps/opentelemetry/src/otel_events.erl",
+                   # allow the `events` record to find the `event` record
+                   includes: ["deps/opentelemetry/include"]
+                 )
   # Define macros for `Span` including a `span` function for generating expected span structure.
-  Record.defrecord(:span, @fields)
+  Record.defrecord(:span_record, :span, @span_fields)
+  Record.defrecord(:event_record, :event, @event_fields)
+  Record.defrecord(:events_record, :events, @events_fields)
+  Record.defrecord(:attributes_record, :attributes, @attribute_fields)
 
   using(_opts) do
     quote do
@@ -30,5 +40,14 @@ defmodule Polyn.TracingCase do
     attribute_limit = 128
     value_length_limit = :infinity
     :otel_attributes.new(attrs, attribute_limit, value_length_limit)
+  end
+
+  @spec get_events(span :: tuple()) :: keyword()
+  def get_events(span_record(events: events_record(list: list))) do
+    # Function signature using macro magicalness to pattern match out the list from the records
+    Enum.map(list, fn record ->
+      event = event_record(record)
+      Keyword.put(event, :attributes, attributes_record(event[:attributes])[:map])
+    end)
   end
 end

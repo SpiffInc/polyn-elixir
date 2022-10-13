@@ -91,7 +91,8 @@ defmodule PolynTest do
         ])
 
       assert_receive(
-        {:span, span(name: "pub.test.event.v1 send", kind: "PRODUCER", attributes: ^span_attrs)}
+        {:span,
+         span_record(name: "pub.test.event.v1 send", kind: "PRODUCER", attributes: ^span_attrs)}
       )
 
       # trace_id and span_id get encoded so there's not a good way to test that they match
@@ -131,9 +132,21 @@ defmodule PolynTest do
     end
 
     test "raises if doesn't match schema" do
+      start_collecting_spans()
+
       assert_raise(Polyn.ValidationException, fn ->
         Polyn.pub(@conn_name, "pub.test.event.v1", 100, store_name: @store_name, source: "orders")
       end)
+
+      {:span, span} =
+        assert_receive({:span, span_record(name: "pub.test.event.v1 send", kind: "PRODUCER")})
+
+      event = get_events(span) |> Enum.at(0)
+
+      assert event[:name] == "exception"
+      assert event[:attributes]["exception.message"] =~ "Expected String but got Integer"
+      assert event[:attributes]["exception.type"] =~ "Polyn.ValidationException"
+      assert event[:attributes]["exception.stacktrace"] =~ "Polyn.Serializers.JSON.validate!/2"
     end
 
     test "passes through other options" do
