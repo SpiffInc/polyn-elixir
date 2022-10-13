@@ -164,7 +164,8 @@ defmodule PolynTest do
         end
 
       data = Jason.decode!(msg.body)
-      assert msg.headers == [{"foo", "bar"}, {"nats-msg-id", data["id"]}]
+      assert {"foo", "bar"} in msg.headers
+      assert {"nats-msg-id", data["id"]} in msg.headers
     end
   end
 
