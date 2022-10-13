@@ -1,13 +1,13 @@
 defmodule Polyn.TracingCase do
-  @moduledoc """
-  This module makes testing tracing easier
-  @see https://opentelemetry.io/docs/instrumentation/erlang/testing/
-  """
+  # This module makes testing tracing easier
+  # @see https://opentelemetry.io/docs/instrumentation/erlang/testing/
+  @moduledoc false
 
   use ExUnit.CaseTemplate
 
   # Use Record module to extract fields of the Span record from the opentelemetry dependency.
   require Record
+
   @span_fields Record.extract(:span, from: "deps/opentelemetry/include/otel_span.hrl")
   @attribute_fields Record.extract(:attributes, from: "deps/opentelemetry/src/otel_attributes.erl")
   @event_fields Record.extract(:event, from: "deps/opentelemetry/include/otel_span.hrl")
@@ -16,6 +16,7 @@ defmodule Polyn.TracingCase do
                    # allow the `events` record to find the `event` record
                    includes: ["deps/opentelemetry/include"]
                  )
+
   # Define macros for `Span` including a `span` function for generating expected span structure.
   Record.defrecord(:span_record, :span, @span_fields)
   Record.defrecord(:event_record, :event, @event_fields)
