@@ -75,15 +75,7 @@ defmodule PolynTest do
       msg = get_message()
       data = decode_message(msg)
 
-      span_attrs =
-        expected_span_attributes([
-          {"messaging.system", "NATS"},
-          {"messaging.destination", "pub.test.event.v1"},
-          {"messaging.protocol", "Polyn"},
-          {"messaging.url", "127.0.0.1"},
-          {"messaging.message_id", data["id"]},
-          {"messaging.message_payload_size_bytes", byte_size(msg.body)}
-        ])
+      span_attrs = span_attributes("pub.test.event.v1", data["id"], msg.body)
 
       assert_receive(
         {:span,
@@ -220,16 +212,6 @@ defmodule PolynTest do
 
       assert has_traceparent_header?(req_msg.headers)
 
-      req_attrs =
-        expected_span_attributes([
-          {"messaging.system", "NATS"},
-          {"messaging.destination", "request.test.request.v1"},
-          {"messaging.protocol", "Polyn"},
-          {"messaging.url", "127.0.0.1"},
-          {"messaging.message_id", data["id"]},
-          {"messaging.message_payload_size_bytes", byte_size(req_msg.body)}
-        ])
-
       {:span, span_record(span_id: reply_span_id)} =
         assert_receive(
           {:span,
@@ -238,6 +220,8 @@ defmodule PolynTest do
              kind: "PRODUCER"
            )}
         )
+
+      req_attrs = span_attributes("request.test.request.v1", data["id"], req_msg.body)
 
       assert_receive(
         {:span,
@@ -249,15 +233,7 @@ defmodule PolynTest do
       )
 
       resp_attrs =
-        expected_span_attributes([
-          {"messaging.system", "NATS"},
-          {"messaging.destination", "(temporary)"},
-          {"messaging.protocol", "Polyn"},
-          {"messaging.url", "127.0.0.1"},
-          {"messaging.message_id", resp_event.id},
-          {"messaging.message_payload_size_bytes",
-           byte_size(Jason.encode!(Map.from_struct(resp_event)))}
-        ])
+        span_attributes("(temporary)", resp_event.id, Jason.encode!(Map.from_struct(resp_event)))
 
       assert_receive(
         {:span,
@@ -324,5 +300,16 @@ defmodule PolynTest do
     Polyn.reply(@conn_name, reply_to, "request.test.response.v1", return_value,
       store_name: @store_name
     )
+  end
+
+  defp span_attributes(dest, id, payload) do
+    expected_span_attributes([
+      {"messaging.system", "NATS"},
+      {"messaging.destination", dest},
+      {"messaging.protocol", "Polyn"},
+      {"messaging.url", "127.0.0.1"},
+      {"messaging.message_id", id},
+      {"messaging.message_payload_size_bytes", byte_size(payload)}
+    ])
   end
 end
