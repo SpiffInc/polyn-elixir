@@ -169,6 +169,8 @@ defmodule PolynTest do
     end
 
     test "generates traces" do
+      start_collecting_spans()
+
       Gnat.sub(@conn_name, self(), "INBOX.me")
       Polyn.reply(@conn_name, "INBOX.me", "reply.test.event.v1", "foo", store_name: @store_name)
 
@@ -176,7 +178,17 @@ defmodule PolynTest do
       data = decode_message(msg)
 
       assert has_traceparent_header?(msg.headers)
-      assert data["data"] == "foo"
+
+      span_attrs = span_attributes("(temporary)", data["id"], msg.body)
+
+      assert_receive(
+        {:span,
+         span_record(
+           name: "(temporary) send",
+           kind: "PRODUCER",
+           attributes: ^span_attrs
+         )}
+      )
     end
 
     test "raises if doesn't match schema" do
