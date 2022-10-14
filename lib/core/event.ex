@@ -88,6 +88,11 @@ defmodule Polyn.Event do
     DateTime.to_iso8601(DateTime.utc_now())
   end
 
+  # we don't need to add both the atom and string versions
+  defp add_polyn_version(%__MODULE__{polyndata: %{"clientversion" => _version}} = event) do
+    event
+  end
+
   defp add_polyn_version(%__MODULE__{} = event) do
     put_in(event, [Access.key!(:polyndata), :clientversion], polyn_version())
   end
