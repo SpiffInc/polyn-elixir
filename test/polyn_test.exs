@@ -49,7 +49,7 @@ defmodule PolynTest do
       Gnat.sub(@conn_name, self(), "pub.test.event.v1")
       Polyn.pub(@conn_name, "pub.test.event.v1", "foo", store_name: @store_name)
 
-      data = get_message()
+      data = get_message() |> decode_message()
       assert data["data"] == "foo"
       assert data["datacontenttype"] == "application/json"
       assert data["source"] == "com:test:user:backend"
@@ -62,7 +62,7 @@ defmodule PolynTest do
       Gnat.sub(@conn_name, self(), "pub.test.event.v1")
       Polyn.pub(@conn_name, "pub.test.event.v1", "foo", store_name: @store_name, source: "orders")
 
-      data = get_message()
+      data = get_message() |> decode_message()
       assert data["source"] == "com:test:user:backend:orders"
     end
 
@@ -72,13 +72,8 @@ defmodule PolynTest do
       Gnat.sub(@conn_name, self(), "pub.test.event.v1")
       Polyn.pub(@conn_name, "pub.test.event.v1", "foo", store_name: @store_name, source: "orders")
 
-      msg =
-        receive do
-          {:msg, msg} ->
-            msg
-        end
-
-      data = Jason.decode!(msg.body)
+      msg = get_message()
+      data = decode_message(msg)
 
       span_attrs =
         expected_span_attributes([
@@ -118,7 +113,7 @@ defmodule PolynTest do
         triggered_by: trigger_event
       )
 
-      data = get_message()
+      data = get_message() |> decode_message()
 
       assert data["polyntrace"] == [
                Enum.at(trigger_event.polyntrace, 0),
@@ -152,12 +147,7 @@ defmodule PolynTest do
       Gnat.sub(@conn_name, self(), "pub.test.event.v1")
       Polyn.pub(@conn_name, "pub.test.event.v1", "foo", store_name: @store_name, reply_to: "foo")
 
-      reply_to =
-        receive do
-          {:msg, %{reply_to: reply_to}} ->
-            reply_to
-        end
-
+      %{reply_to: reply_to} = get_message()
       assert reply_to == "foo"
     end
 
@@ -169,13 +159,9 @@ defmodule PolynTest do
         headers: [{"foo", "bar"}]
       )
 
-      msg =
-        receive do
-          {:msg, msg} ->
-            msg
-        end
+      msg = get_message()
+      data = decode_message(msg)
 
-      data = Jason.decode!(msg.body)
       assert {"foo", "bar"} in msg.headers
       assert {"nats-msg-id", data["id"]} in msg.headers
     end
@@ -186,7 +172,7 @@ defmodule PolynTest do
       Gnat.sub(@conn_name, self(), "INBOX.me")
       Polyn.reply(@conn_name, "INBOX.me", "reply.test.event.v1", "foo", store_name: @store_name)
 
-      data = get_message()
+      data = get_message() |> decode_message()
       assert data["data"] == "foo"
     end
 
@@ -194,13 +180,8 @@ defmodule PolynTest do
       Gnat.sub(@conn_name, self(), "INBOX.me")
       Polyn.reply(@conn_name, "INBOX.me", "reply.test.event.v1", "foo", store_name: @store_name)
 
-      msg =
-        receive do
-          {:msg, msg} ->
-            msg
-        end
-
-      data = Jason.decode!(msg.body)
+      msg = get_message()
+      data = decode_message(msg)
 
       assert has_traceparent_header?(msg.headers)
       assert data["data"] == "foo"
@@ -254,13 +235,8 @@ defmodule PolynTest do
       {:ok, %{body: resp_event}} =
         Polyn.request(@conn_name, "request.test.request.v1", "foo", store_name: @store_name)
 
-      req_msg =
-        receive do
-          {:msg, msg} ->
-            msg
-        end
-
-      data = Jason.decode!(req_msg.body)
+      req_msg = get_message()
+      data = decode_message(req_msg)
 
       assert has_traceparent_header?(req_msg.headers)
 
@@ -343,13 +319,15 @@ defmodule PolynTest do
 
   defp get_message do
     receive do
-      {:msg, %{body: body}} ->
-        Jason.decode!(body)
+      {:msg, msg} ->
+        msg
     after
       100 ->
         raise "no message"
     end
   end
+
+  defp decode_message(msg), do: Jason.decode!(msg.body)
 
   # trace_id and span_id get encoded so there's not a good way to test that they match
   defp has_traceparent_header?(headers) do
