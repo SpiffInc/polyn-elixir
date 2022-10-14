@@ -1,6 +1,7 @@
 defmodule Polyn.SubscriberTest do
   # async false for global sandbox
   use Polyn.ConnCase, async: false
+  use Polyn.TracingCase
 
   alias Polyn.{Event, MockNats, Sandbox, SchemaStore, Subscriber}
 
@@ -92,20 +93,52 @@ defmodule Polyn.SubscriberTest do
     pid = start_subscriber()
     ref = Process.monitor(pid)
 
-    Gnat.pub(@conn_name, "subscriber.test.event.v1", """
-    {
-      "id": "#{UUID.uuid4()}",
-      "source": "com.test.foo",
-      "type": "com.test.subscriber.test.event.v1",
-      "specversion": "1.0.1",
-      "data": {
-        "name": 123,
-        "element": 456
+    Gnat.pub(
+      @conn_name,
+      "subscriber.test.event.v1",
+      """
+      {
+        "id": "#{UUID.uuid4()}",
+        "source": "com.test.foo",
+        "type": "com.test.subscriber.test.event.v1",
+        "specversion": "1.0.1",
+        "data": {
+          "name": 123,
+          "element": 456
+        }
       }
-    }
-    """)
+      """,
+      headers: []
+    )
 
     assert_receive({:DOWN, ^ref, :process, ^pid, {%Polyn.ValidationException{}, _stack}}, 500)
+  end
+
+  test "adds tracing" do
+    start_collecting_spans()
+    start_subscriber()
+
+    Polyn.pub(@conn_name, "subscriber.test.event.v1", %{name: "Iroh", element: "fire"},
+      reply_to: "foo",
+      store_name: @store_name
+    )
+
+    {:received_event, event, msg} =
+      assert_receive(
+        {:received_event, %Event{data: %{"name" => "Iroh", "element" => "fire"}},
+         %{reply_to: "foo"}}
+      )
+
+    span_attrs = span_attributes("subscriber.test.event.v1", event.id, msg.body)
+
+    assert_receive(
+      {:span,
+       span_record(
+         name: "subscriber.test.event.v1 receive",
+         kind: "CONSUMER",
+         attributes: ^span_attrs
+       )}
+    )
   end
 
   describe "mock integration" do
@@ -122,7 +155,8 @@ defmodule Polyn.SubscriberTest do
           type: "com.test.subscriber.test.event.v1",
           data: %{name: "Iroh", element: "fire"}
         }),
-        reply_to: "foo"
+        reply_to: "foo",
+        headers: []
       )
 
       assert_receive(

@@ -26,6 +26,7 @@ defmodule Polyn.Subscriber do
   """
 
   use GenServer
+  use Polyn.Tracing
 
   alias Polyn.Event
   alias Polyn.Serializers.JSON
@@ -109,21 +110,30 @@ defmodule Polyn.Subscriber do
 
   @impl true
   def handle_info({:msg, %{body: body} = msg}, internal_state) do
-    event =
-      JSON.deserialize!(
-        body,
-        internal_state.opts
+    Polyn.Tracing.subscribe_span msg.topic, msg do
+      event =
+        JSON.deserialize!(
+          body,
+          internal_state.opts
+        )
+
+      Polyn.Tracing.span_attributes(
+        conn: internal_state.opts[:connection_name],
+        type: internal_state.opts[:event],
+        event: event,
+        payload: body
       )
 
-    case internal_state.module.handle_message(event, msg, internal_state.state) do
-      {:noreply, state} ->
-        {:noreply, Map.put(internal_state, :state, state)}
+      case internal_state.module.handle_message(event, msg, internal_state.state) do
+        {:noreply, state} ->
+          {:noreply, Map.put(internal_state, :state, state)}
 
-      {:noreply, state, other} ->
-        {:noreply, Map.put(internal_state, :state, state), other}
+        {:noreply, state, other} ->
+          {:noreply, Map.put(internal_state, :state, state), other}
 
-      other ->
-        other
+        other ->
+          other
+      end
     end
   end
 
