@@ -352,15 +352,4 @@ defmodule PolynTest do
       store_name: @store_name
     )
   end
-
-  defp span_attributes(dest, id, payload) do
-    expected_span_attributes([
-      {"messaging.system", "NATS"},
-      {"messaging.destination", dest},
-      {"messaging.protocol", "Polyn"},
-      {"messaging.url", "127.0.0.1"},
-      {"messaging.message_id", id},
-      {"messaging.message_payload_size_bytes", byte_size(payload)}
-    ])
-  end
 end

@@ -35,12 +35,24 @@ defmodule Polyn.TracingCase do
     :otel_simple_processor.set_exporter(:otel_exporter_pid, self())
   end
 
-  @spec expected_span_attributes(attrs :: keyword()) :: :otel_attributes.t()
-  def expected_span_attributes(attrs) when is_list(attrs) do
+  defp expected_span_attributes(attrs) when is_list(attrs) do
     # https://hexdocs.pm/opentelemetry/readme.html#span-limits
     attribute_limit = 128
     value_length_limit = :infinity
     :otel_attributes.new(attrs, attribute_limit, value_length_limit)
+  end
+
+  @spec span_attributes(dest :: binary(), id :: binary(), payload :: binary()) ::
+          :otel_attributes.t()
+  def span_attributes(dest, id, payload) do
+    expected_span_attributes([
+      {"messaging.system", "NATS"},
+      {"messaging.destination", dest},
+      {"messaging.protocol", "Polyn"},
+      {"messaging.url", "127.0.0.1"},
+      {"messaging.message_id", id},
+      {"messaging.message_payload_size_bytes", byte_size(payload)}
+    ])
   end
 
   @spec get_events(span :: tuple()) :: keyword()

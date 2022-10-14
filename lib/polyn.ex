@@ -5,7 +5,7 @@ defmodule Polyn do
   based services.
   """
 
-  use Polyn.Tracing, as: Tracing
+  use Polyn.Tracing
 
   alias Polyn.Event
   alias Polyn.Serializers.JSON
