@@ -136,7 +136,9 @@ defmodule Polyn do
   end
 
   defp handle_reponse_success(conn, message, opts) do
-    Polyn.Tracing.response_handler_span message do
+    # The :reply_to subject is a temporarily generated "inbox"
+    # https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/messaging/#span-name
+    Polyn.Tracing.subscribe_span "(temporary)", message do
       event = JSON.deserialize!(message.body, opts)
 
       Polyn.Tracing.span_attributes(
