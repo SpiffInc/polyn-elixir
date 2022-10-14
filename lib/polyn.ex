@@ -135,7 +135,7 @@ defmodule Polyn do
   end
 
   defp handle_reponse_success(conn, message, opts) do
-    Polyn.Tracing.request_response_span do
+    Polyn.Tracing.response_handler_span message do
       event = JSON.deserialize!(message.body, opts)
 
       Polyn.Tracing.span_attributes(
@@ -176,11 +176,24 @@ defmodule Polyn do
         ) ::
           :ok
   def reply(conn, reply_to, event_type, data, opts \\ []) do
-    event = build_event(event_type, data, opts)
+    Polyn.Tracing.publish_span "(temporary)" do
+      event = build_event(event_type, data, opts)
 
-    opts = add_nats_msg_id_header(opts, event)
+      json = JSON.serialize!(event, opts)
 
-    nats().pub(conn, reply_to, JSON.serialize!(event, opts), remove_polyn_opts(opts))
+      Polyn.Tracing.span_attributes(
+        conn: conn,
+        type: "(temporary)",
+        event: event,
+        payload: json
+      )
+
+      opts =
+        add_nats_msg_id_header(opts, event)
+        |> inject_trace_header()
+
+      nats().pub(conn, reply_to, json, remove_polyn_opts(opts))
+    end
   end
 
   defp build_event(event_type, data, opts) do

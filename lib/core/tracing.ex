@@ -27,12 +27,16 @@ defmodule Polyn.Tracing do
   @doc """
   Start a span for receiving a response from a request
   """
-  defmacro request_response_span(do: block) do
+  defmacro response_handler_span(message, do: block) do
     block = record_exceptions(block)
 
     # The :reply_to subject is a temporarily generated "inbox"
     # https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/messaging/#span-name
     quote do
+      # Extract a `traceparent` header from a message so it can connect the current span to a remote span
+      # https://www.w3.org/TR/trace-context/#traceparent-header
+      :otel_propagator_text_map.extract(unquote(message).headers)
+
       OpenTelemetry.Tracer.with_span("(temporary) receive", %{kind: "CONSUMER"},
         do: unquote(block)
       )

@@ -191,6 +191,24 @@ defmodule PolynTest do
       assert data["data"] == "foo"
     end
 
+    test "generates traces" do
+      Gnat.sub(@conn_name, self(), "INBOX.me")
+      Polyn.reply(@conn_name, "INBOX.me", "reply.test.event.v1", "foo", store_name: @store_name)
+
+      msg =
+        receive do
+          {:msg, msg} ->
+            msg
+        end
+
+      data = Jason.decode!(msg.body)
+
+      # trace_id and span_id get encoded so there's not a good way to test that they match
+      assert Enum.any?(msg.headers, fn {key, _value} -> key == "traceparent" end)
+
+      assert data["data"] == "foo"
+    end
+
     test "raises if doesn't match schema" do
       assert_raise(Polyn.ValidationException, fn ->
         Polyn.reply(@conn_name, "INBOX.me", "reply.test.event.v1", 100, store_name: @store_name)
@@ -260,6 +278,24 @@ defmodule PolynTest do
           {"messaging.message_payload_size_bytes", byte_size(req_msg.body)}
         ])
 
+      {:span, span_record(span_id: reply_span_id)} =
+        assert_receive(
+          {:span,
+           span_record(
+             name: "(temporary) send",
+             kind: "PRODUCER"
+           )}
+        )
+
+      assert_receive(
+        {:span,
+         span_record(
+           name: "request.test.request.v1 send",
+           kind: "PRODUCER",
+           attributes: ^req_attrs
+         )}
+      )
+
       resp_attrs =
         expected_span_attributes([
           {"messaging.system", "NATS"},
@@ -271,22 +307,12 @@ defmodule PolynTest do
            byte_size(Jason.encode!(Map.from_struct(resp_event)))}
         ])
 
-      {:span, span_record(span_id: req_span_id)} =
-        assert_receive(
-          {:span,
-           span_record(
-             name: "request.test.request.v1 send",
-             kind: "PRODUCER",
-             attributes: ^req_attrs
-           )}
-        )
-
       assert_receive(
         {:span,
          span_record(
            name: "(temporary) receive",
            kind: "CONSUMER",
-           parent_span_id: ^req_span_id,
+           parent_span_id: ^reply_span_id,
            attributes: ^resp_attrs
          )}
       )
@@ -307,7 +333,7 @@ defmodule PolynTest do
 
           receive do
             {:msg, %{topic: "request.test.request.v1", reply_to: reply_to}} ->
-              Gnat.pub(@conn_name, reply_to, "100")
+              Gnat.pub(@conn_name, reply_to, "100", headers: [])
           end
         end)
 
