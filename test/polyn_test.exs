@@ -196,17 +196,7 @@ defmodule PolynTest do
 
   describe "request/4" do
     test "returned message is an event" do
-      pid =
-        spawn_link(fn ->
-          Gnat.sub(@conn_name, self(), "request.test.request.v1")
-
-          receive do
-            {:msg, %{topic: "request.test.request.v1", reply_to: reply_to}} ->
-              Polyn.reply(@conn_name, reply_to, "request.test.response.v1", "bar",
-                store_name: @store_name
-              )
-          end
-        end)
+      pid = spawn_reply_process("bar")
 
       {:ok, %{body: event}} =
         Polyn.request(@conn_name, "request.test.request.v1", "foo", store_name: @store_name)
@@ -220,17 +210,7 @@ defmodule PolynTest do
       start_collecting_spans()
       Gnat.sub(@conn_name, self(), "request.test.request.v1")
 
-      pid =
-        spawn_link(fn ->
-          Gnat.sub(@conn_name, self(), "request.test.request.v1")
-
-          receive do
-            {:msg, %{topic: "request.test.request.v1", reply_to: reply_to}} ->
-              Polyn.reply(@conn_name, reply_to, "request.test.response.v1", "bar",
-                store_name: @store_name
-              )
-          end
-        end)
+      pid = spawn_reply_process("bar")
 
       {:ok, %{body: resp_event}} =
         Polyn.request(@conn_name, "request.test.request.v1", "foo", store_name: @store_name)
@@ -300,13 +280,8 @@ defmodule PolynTest do
 
     test "error if reply event doesn't match schema" do
       pid =
-        spawn_link(fn ->
-          Gnat.sub(@conn_name, self(), "request.test.request.v1")
-
-          receive do
-            {:msg, %{topic: "request.test.request.v1", reply_to: reply_to}} ->
-              Gnat.pub(@conn_name, reply_to, "100", headers: [])
-          end
+        spawn_reply_process("100", fn reply_to, _return_value ->
+          Gnat.pub(@conn_name, reply_to, "100", headers: [])
         end)
 
       assert_raise(Polyn.ValidationException, fn ->
@@ -332,5 +307,22 @@ defmodule PolynTest do
   # trace_id and span_id get encoded so there's not a good way to test that they match
   defp has_traceparent_header?(headers) do
     Enum.any?(headers, fn {key, _value} -> key == "traceparent" end)
+  end
+
+  defp spawn_reply_process(return_value, reply_func \\ &default_reply/2) do
+    spawn_link(fn ->
+      Gnat.sub(@conn_name, self(), "request.test.request.v1")
+
+      receive do
+        {:msg, %{topic: "request.test.request.v1", reply_to: reply_to}} ->
+          reply_func.(reply_to, return_value)
+      end
+    end)
+  end
+
+  defp default_reply(reply_to, return_value) do
+    Polyn.reply(@conn_name, reply_to, "request.test.response.v1", return_value,
+      store_name: @store_name
+    )
   end
 end
