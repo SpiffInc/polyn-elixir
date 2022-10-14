@@ -220,6 +220,80 @@ defmodule PolynTest do
       Process.exit(pid, :kill)
     end
 
+    test "generates traces" do
+      start_collecting_spans()
+      Gnat.sub(@conn_name, self(), "request.test.request.v1")
+
+      pid =
+        spawn_link(fn ->
+          Gnat.sub(@conn_name, self(), "request.test.request.v1")
+
+          receive do
+            {:msg, %{topic: "request.test.request.v1", reply_to: reply_to}} ->
+              Polyn.reply(@conn_name, reply_to, "request.test.response.v1", "bar",
+                store_name: @store_name
+              )
+          end
+        end)
+
+      {:ok, %{body: resp_event}} =
+        Polyn.request(@conn_name, "request.test.request.v1", "foo", store_name: @store_name)
+
+      req_msg =
+        receive do
+          {:msg, msg} ->
+            msg
+        end
+
+      data = Jason.decode!(req_msg.body)
+
+      # trace_id and span_id get encoded so there's not a good way to test that they match
+      assert Enum.any?(req_msg.headers, fn {key, _value} -> key == "traceparent" end)
+
+      req_attrs =
+        expected_span_attributes([
+          {"messaging.system", "NATS"},
+          {"messaging.destination", "request.test.request.v1"},
+          {"messaging.protocol", "Polyn"},
+          {"messaging.url", "127.0.0.1"},
+          {"messaging.message_id", data["id"]},
+          {"messaging.message_payload_size_bytes", byte_size(req_msg.body)}
+        ])
+
+      resp_attrs =
+        expected_span_attributes([
+          {"messaging.system", "NATS"},
+          {"messaging.destination", "(temporary)"},
+          {"messaging.protocol", "Polyn"},
+          {"messaging.url", "127.0.0.1"},
+          {"messaging.message_id", resp_event.id},
+          {"messaging.message_payload_size_bytes",
+           byte_size(Jason.encode!(Map.from_struct(resp_event)))}
+        ])
+
+      {:span, span_record(span_id: req_span_id)} =
+        assert_receive(
+          {:span,
+           span_record(
+             name: "request.test.request.v1 send",
+             kind: "PRODUCER",
+             attributes: ^req_attrs
+           )}
+        )
+
+      assert_receive(
+        {:span,
+         span_record(
+           name: "(temporary) receive",
+           kind: "CONSUMER",
+           parent_span_id: ^req_span_id,
+           attributes: ^resp_attrs
+         )}
+      )
+
+      Process.exit(pid, :kill)
+    end
+
     test "error if request event doesn't match schema" do
       assert_raise(Polyn.ValidationException, fn ->
         Polyn.request(@conn_name, "request.test.request.v1", 100, store_name: @store_name)

@@ -25,6 +25,21 @@ defmodule Polyn.Tracing do
   end
 
   @doc """
+  Start a span for receiving a response from a request
+  """
+  defmacro request_response_span(do: block) do
+    block = record_exceptions(block)
+
+    # The :reply_to subject is a temporarily generated "inbox"
+    # https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/messaging/#span-name
+    quote do
+      OpenTelemetry.Tracer.with_span("(temporary) receive", %{kind: "CONSUMER"},
+        do: unquote(block)
+      )
+    end
+  end
+
+  @doc """
   Common attributes to add to a span involving an individual message
   https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/messaging/#messaging-attributesADd common at
   """

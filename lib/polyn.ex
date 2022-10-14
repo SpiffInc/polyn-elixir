@@ -108,21 +108,44 @@ defmodule Polyn do
           opts :: list(req_options())
         ) :: {:ok, Gnat.message()} | {:error, :timeout}
   def request(conn, event_type, data, opts \\ []) do
-    event = build_event(event_type, data, opts)
+    Polyn.Tracing.publish_span event_type do
+      event = build_event(event_type, data, opts)
 
-    opts = add_nats_msg_id_header(opts, event)
+      opts =
+        add_nats_msg_id_header(opts, event)
+        |> inject_trace_header()
 
-    case nats().request(
-           conn,
-           event_type,
-           JSON.serialize!(event, opts),
-           remove_polyn_opts(opts)
-         ) do
-      {:ok, message} ->
-        {:ok, Map.put(message, :body, JSON.deserialize!(message.body, opts))}
+      json = JSON.serialize!(event, opts)
 
-      error ->
-        error
+      Polyn.Tracing.span_attributes(conn: conn, type: event_type, event: event, payload: json)
+
+      case nats().request(
+             conn,
+             event_type,
+             json,
+             remove_polyn_opts(opts)
+           ) do
+        {:ok, message} ->
+          handle_reponse_success(conn, message, opts)
+
+        error ->
+          error
+      end
+    end
+  end
+
+  defp handle_reponse_success(conn, message, opts) do
+    Polyn.Tracing.request_response_span do
+      event = JSON.deserialize!(message.body, opts)
+
+      Polyn.Tracing.span_attributes(
+        conn: conn,
+        type: "(temporary)",
+        event: event,
+        payload: message.body
+      )
+
+      {:ok, Map.put(message, :body, event)}
     end
   end
 
