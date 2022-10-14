@@ -82,4 +82,13 @@ defmodule Polyn.Tracing do
       end
     end
   end
+
+  @doc """
+  Add non-raised timeout exceptions to the current span
+  """
+  def record_timeout_exception(event_type, json) do
+    OpenTelemetry.Tracer.record_exception(%RuntimeError{
+      message: "request for #{event_type} timeout. payload: \n#{json}"
+    })
+  end
 end

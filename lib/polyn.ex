@@ -129,6 +129,7 @@ defmodule Polyn do
           handle_reponse_success(conn, message, opts)
 
         error ->
+          Polyn.Tracing.record_timeout_exception(event_type, json)
           error
       end
     end

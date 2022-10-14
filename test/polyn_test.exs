@@ -260,6 +260,45 @@ defmodule PolynTest do
       Process.exit(pid, :kill)
     end
 
+    test "timeout is in span exceptions" do
+      start_collecting_spans()
+      Gnat.sub(@conn_name, self(), "request.test.request.v1")
+
+      pid =
+        spawn_reply_process("bar", fn reply_to, _return_value ->
+          # Force reply to take longer that receive_timeout
+          :timer.sleep(10)
+          default_reply("bar", reply_to)
+        end)
+
+      assert {:error, :timeout} =
+               Polyn.request(@conn_name, "request.test.request.v1", "foo",
+                 store_name: @store_name,
+                 receive_timeout: 1
+               )
+
+      {:span, span} =
+        assert_receive(
+          {:span,
+           span_record(
+             name: "request.test.request.v1 send",
+             kind: "PRODUCER"
+           )}
+        )
+
+      event = get_events(span) |> Enum.at(0)
+
+      assert event[:name] == "exception"
+
+      assert event[:attributes]["exception.message"] =~
+               "request for request.test.request.v1 timeout"
+
+      assert event[:attributes]["exception.type"] =~ "RuntimeError"
+      assert event[:attributes]["exception.stacktrace"] =~ "Polyn.request/4"
+
+      Process.exit(pid, :kill)
+    end
+
     test "error if request event doesn't match schema" do
       assert_raise(Polyn.ValidationException, fn ->
         Polyn.request(@conn_name, "request.test.request.v1", 100, store_name: @store_name)
