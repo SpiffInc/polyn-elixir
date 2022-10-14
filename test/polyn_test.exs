@@ -95,8 +95,7 @@ defmodule PolynTest do
          span_record(name: "pub.test.event.v1 send", kind: "PRODUCER", attributes: ^span_attrs)}
       )
 
-      # trace_id and span_id get encoded so there's not a good way to test that they match
-      assert Enum.any?(msg.headers, fn {key, _value} -> key == "traceparent" end)
+      assert has_traceparent_header?(msg.headers)
     end
 
     test "builds up polyntrace if :triggered_by is supplied" do
@@ -203,9 +202,7 @@ defmodule PolynTest do
 
       data = Jason.decode!(msg.body)
 
-      # trace_id and span_id get encoded so there's not a good way to test that they match
-      assert Enum.any?(msg.headers, fn {key, _value} -> key == "traceparent" end)
-
+      assert has_traceparent_header?(msg.headers)
       assert data["data"] == "foo"
     end
 
@@ -265,8 +262,7 @@ defmodule PolynTest do
 
       data = Jason.decode!(req_msg.body)
 
-      # trace_id and span_id get encoded so there's not a good way to test that they match
-      assert Enum.any?(req_msg.headers, fn {key, _value} -> key == "traceparent" end)
+      assert has_traceparent_header?(req_msg.headers)
 
       req_attrs =
         expected_span_attributes([
@@ -353,5 +349,10 @@ defmodule PolynTest do
       100 ->
         raise "no message"
     end
+  end
+
+  # trace_id and span_id get encoded so there's not a good way to test that they match
+  defp has_traceparent_header?(headers) do
+    Enum.any?(headers, fn {key, _value} -> key == "traceparent" end)
   end
 end
