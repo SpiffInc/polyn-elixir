@@ -136,22 +136,13 @@ defmodule Polyn.PullConsumerTest do
   test "adds tracing" do
     start_collecting_spans()
 
-    Gnat.pub(
+    Polyn.pub(
       @conn_name,
       "pull.consumer.test.event.v1",
-      """
-      {
-        "id": "#{UUID.uuid4()}",
-        "source": "com.test.foo",
-        "type": "com.test.pull.consumer.test.event.v1",
-        "specversion": "1.0.1",
-        "data": {
-          "name": "Toph",
-          "element": "earth"
-        }
-      }
-      """,
-      headers: []
+      %{
+          "name" => "Toph",
+          "element" => "earth"
+      }, store_name: @store_name
     )
 
     start_listening_for_messages()
@@ -162,8 +153,8 @@ defmodule Polyn.PullConsumerTest do
          %Event{
            type: "com.test.pull.consumer.test.event.v1",
            data: %{
-             "name" => "Katara",
-             "element" => "water"
+             "name" => "Toph",
+             "element" => "earth"
            }
          }}
       )
