@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "description": "CloudEvents Specification JSON Schema",
+  "description": "CloudEvents Specification JSON Schema, extended for Polyn",
   "type": "object",
   "properties": {
     "id": {
@@ -89,19 +89,6 @@
           "clientversion": "0.1.0"
         }
       ]
-    },
-    "polyntrace": {
-      "$ref": "#/definitions/polyntracedef",
-      "description": "Previous events that led to this one",
-      "examples": [
-        [
-          {
-            "type": "<topic>",
-            "time": "2018-04-05T17:31:00Z",
-            "id": "<uuid>"
-          }
-        ]
-      ]
     }
   },
   "required": ["id", "source", "specversion", "type"],
@@ -162,26 +149,6 @@
         }
       },
       "required": ["clientlang", "clientlangversion", "clientversion"]
-    },
-    "polyntracedef": {
-      "type" : "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string"
-          },
-          "time": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "id"  : {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "required": ["type", "time", "id"]
-      }
     }
   }
 }
