@@ -1,6 +1,7 @@
 defmodule Polyn.PullConsumerTest do
   # async false for global sandbox
   use Polyn.ConnCase, async: false
+  use Polyn.TracingCase
 
   alias Jetstream.API.{Consumer, Stream}
   alias Polyn.Event
@@ -129,6 +130,58 @@ defmodule Polyn.PullConsumerTest do
            "element" => "earth"
          }
        }}
+    )
+  end
+
+  test "adds tracing" do
+    start_collecting_spans()
+
+    Gnat.pub(
+      @conn_name,
+      "pull.consumer.test.event.v1",
+      """
+      {
+        "id": "#{UUID.uuid4()}",
+        "source": "com.test.foo",
+        "type": "com.test.pull.consumer.test.event.v1",
+        "specversion": "1.0.1",
+        "data": {
+          "name": "Toph",
+          "element": "earth"
+        }
+      }
+      """,
+      headers: []
+    )
+
+    start_listening_for_messages()
+
+    {:received_event, event} =
+      assert_receive(
+        {:received_event,
+         %Event{
+           type: "com.test.pull.consumer.test.event.v1",
+           data: %{
+             "name" => "Katara",
+             "element" => "water"
+           }
+         }}
+      )
+
+    span_attrs =
+      span_attributes(
+        "pull.consumer.test.event.v1",
+        event.id,
+        Jason.encode!(Map.from_struct(event))
+      )
+
+    assert_receive(
+      {:span,
+       span_record(
+         name: "pull.consumer.test.event.v1 receive",
+         kind: "CONSUMER",
+         attributes: ^span_attrs
+       )}
     )
   end
 

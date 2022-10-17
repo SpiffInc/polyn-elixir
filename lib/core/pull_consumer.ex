@@ -33,6 +33,7 @@ defmodule Polyn.PullConsumer do
   """
 
   use Jetstream.PullConsumer
+  use Polyn.Tracing
   alias Polyn.Serializers.JSON
 
   defstruct [:module, :state, :store_name, :connection_name, :type, :source]
@@ -191,19 +192,28 @@ defmodule Polyn.PullConsumer do
 
   @impl Jetstream.PullConsumer
   def handle_message(message, %{module: module, state: state} = internal_state) do
-    case JSON.deserialize(message.body, store_name: internal_state.store_name) do
-      {:ok, event} ->
-        {response, state} = module.handle_message(event, message, state)
+    Polyn.Tracing.subscribe_span internal_state.type, message do
+      case JSON.deserialize(message.body, store_name: internal_state.store_name) do
+        {:ok, event} ->
+          Polyn.Tracing.span_attributes(
+            conn: internal_state.connection_name,
+            type: internal_state.type,
+            event: event,
+            payload: message.body
+          )
 
-        {response, %{internal_state | state: state}}
+          {response, state} = module.handle_message(event, message, state)
 
-      {:error, error} ->
-        # If a validation error happens we want to tell NATS to stop sending the message
-        # and that it won't be processed (ACKTERM) and will prevent us from raising the
-        # same error over and over.
-        Jetstream.ack_term(message)
+          {response, %{internal_state | state: state}}
 
-        raise Polyn.ValidationException, error
+        {:error, error} ->
+          # If a validation error happens we want to tell NATS to stop sending the message
+          # and that it won't be processed (ACKTERM) and will prevent us from raising the
+          # same error over and over.
+          Jetstream.ack_term(message)
+
+          raise Polyn.ValidationException, error
+      end
     end
   end
 
