@@ -42,6 +42,19 @@ defmodule Polyn.Tracing do
   end
 
   @doc """
+  Start a span to handle processing of batch messages
+  """
+  defmacro processing_span(type, do: block) do
+    block = record_exceptions(block)
+
+    quote do
+      OpenTelemetry.Tracer.with_span("#{unquote(type)} process", %{kind: "CONSUMER"},
+        do: unquote(block)
+      )
+    end
+  end
+
+  @doc """
   Common attributes to add to a span involving an individual message
   https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/messaging/#messaging-attributesADd common at
   """
@@ -65,6 +78,20 @@ defmodule Polyn.Tracing do
   """
   def add_trace_header(headers) do
     :otel_propagator_text_map.inject(headers)
+  end
+
+  @doc """
+  Link one span to another span
+  """
+  def link_to_context(ctx) do
+    OpenTelemetry.link(ctx)
+  end
+
+  @doc """
+  Get the current span context
+  """
+  def current_context do
+    OpenTelemetry.Ctx.get_current()
   end
 
   # Any errors that happen, expecially validation errors, we want the span to record so observability tools

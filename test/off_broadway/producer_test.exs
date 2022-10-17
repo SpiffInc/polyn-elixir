@@ -88,33 +88,43 @@ defmodule OffBroadway.Polyn.ProducerTest do
 
   describe "nats integration" do
     test "valid messages are converted to Event structs" do
-      Gnat.pub(@conn_name, "company.created.v1", """
-      {
-        "id": "#{UUID.uuid4()}",
-        "source": "com.test.foo",
-        "type": "com.test.company.created.v1",
-        "specversion": "1.0.1",
-        "type": "com.test.company.created.v1",
-        "data": {
-          "name": "Toph",
-          "element": "earth"
+      Gnat.pub(
+        @conn_name,
+        "company.created.v1",
+        """
+        {
+          "id": "#{UUID.uuid4()}",
+          "source": "com.test.foo",
+          "type": "com.test.company.created.v1",
+          "specversion": "1.0.1",
+          "type": "com.test.company.created.v1",
+          "data": {
+            "name": "Toph",
+            "element": "earth"
+          }
         }
-      }
-      """)
+        """,
+        headers: []
+      )
 
-      Gnat.pub(@conn_name, "company.created.v1", """
-      {
-        "id": "#{UUID.uuid4()}",
-        "source": "com.test.foo",
-        "type": "com.test.company.created.v1",
-        "specversion": "1.0.1",
-        "type": "com.test.company.created.v1",
-        "data": {
-          "name": "Katara",
-          "element": "water"
+      Gnat.pub(
+        @conn_name,
+        "company.created.v1",
+        """
+        {
+          "id": "#{UUID.uuid4()}",
+          "source": "com.test.foo",
+          "type": "com.test.company.created.v1",
+          "specversion": "1.0.1",
+          "type": "com.test.company.created.v1",
+          "data": {
+            "name": "Katara",
+            "element": "water"
+          }
         }
-      }
-      """)
+        """,
+        headers: []
+      )
 
       start_pipeline()
 
