@@ -199,7 +199,6 @@ defmodule Polyn.Serializers.JSONTest do
                "type" => "com.test.foo.created.v1",
                "source" => "test",
                "time" => ^now,
-               "polyntrace" => [],
                "polyndata" => %{
                  "clientlang" => "elixir",
                  "clientlangversion" => ^langversion,

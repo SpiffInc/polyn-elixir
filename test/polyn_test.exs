@@ -55,7 +55,6 @@ defmodule PolynTest do
       assert data["source"] == "com:test:user:backend"
       assert data["specversion"] == "1.0.1"
       assert data["type"] == "com.test.pub.test.event.v1"
-      assert data["polyntrace"] == []
     end
 
     test "can include extra `source` info" do
@@ -83,38 +82,6 @@ defmodule PolynTest do
       )
 
       assert has_traceparent_header?(msg.headers)
-    end
-
-    test "builds up polyntrace if :triggered_by is supplied" do
-      Gnat.sub(@conn_name, self(), "pub.test.event.v1")
-
-      trigger_event =
-        Event.new(
-          type: Event.full_type("user.form.finished.v1"),
-          polyntrace: [
-            %{
-              "id" => Event.new_event_id(),
-              "time" => Event.new_timestamp(),
-              "type" => Event.full_type("user.entered.site.v1")
-            }
-          ]
-        )
-
-      Polyn.pub(@conn_name, "pub.test.event.v1", "foo",
-        store_name: @store_name,
-        triggered_by: trigger_event
-      )
-
-      data = get_message() |> decode_message()
-
-      assert data["polyntrace"] == [
-               Enum.at(trigger_event.polyntrace, 0),
-               %{
-                 "id" => trigger_event.id,
-                 "time" => trigger_event.time,
-                 "type" => trigger_event.type
-               }
-             ]
     end
 
     test "raises if doesn't match schema" do

@@ -15,13 +15,10 @@ defmodule Polyn do
 
   * `:source` - The `source` of the event. By default will be the `domain` combined with the
   `source_root`
-  * `:triggered_by` - The event that triggered this one. Will use information from the event to build
-  up the `polyntrace` data
   """
   @type polyn_options ::
           {:store_name, binary()}
           | {:source, binary()}
-          | {:triggered_by, Event.t()}
 
   @typedoc """
   Options for publishing events. See `Gnat.pub/4` for more info
@@ -53,8 +50,6 @@ defmodule Polyn do
 
   * `:source` - The `source` of the event. By default will be the `domain` combined with the
   `source_root`
-  * `:triggered_by` - The event that triggered this one. Will use information from the event to build
-  up the `polyntrace` data
   * See `Gnat.pub/4` for other options
 
   ## Examples
@@ -90,8 +85,6 @@ defmodule Polyn do
 
   * `:source` - The `source` of the event. By default will be the `domain` combined with the
   `source_root`
-  * `:triggered_by` - The event that triggered this one. Will use information from the event to build
-  up the `polyntrace` data
   * See `Gnat.request/4` for other options
 
   ## Examples
@@ -159,8 +152,6 @@ defmodule Polyn do
 
   * `:source` - The `source` of the event. By default will be the `domain` combined with the
   `source_root`
-  * `:triggered_by` - The event that triggered this one. Will use information from the event to build
-  up the `polyntrace` data
   * See `Gnat.pub/4` for other options
 
   ## Examples
@@ -206,24 +197,11 @@ defmodule Polyn do
       specversion: "1.0.1",
       source: Event.full_source(Keyword.get(opts, :source)),
       datacontenttype: "application/json",
-      polyntrace: build_polyntrace(Keyword.get(opts, :triggered_by))
     )
   end
 
-  defp build_polyntrace(nil), do: []
-
-  defp build_polyntrace(%Event{} = triggered_by) do
-    Enum.concat(triggered_by.polyntrace, [
-      %{
-        id: triggered_by.id,
-        type: triggered_by.type,
-        time: triggered_by.time
-      }
-    ])
-  end
-
   defp remove_polyn_opts(opts) do
-    Keyword.drop(opts, [:source, :triggered_by, :store_name])
+    Keyword.drop(opts, [:source, :store_name])
   end
 
   defp add_nats_msg_id_header(opts, event) do
