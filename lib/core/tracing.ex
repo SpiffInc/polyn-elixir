@@ -33,7 +33,9 @@ defmodule Polyn.Tracing do
     quote do
       # Extract a `traceparent` header from a message so it can connect the current span to a remote span
       # https://www.w3.org/TR/trace-context/#traceparent-header
-      :otel_propagator_text_map.extract(unquote(message).headers)
+      if unquote(message)[:headers] do
+        :otel_propagator_text_map.extract(unquote(message)[:headers])
+      end
 
       OpenTelemetry.Tracer.with_span("#{unquote(type)} receive", %{kind: "CONSUMER"},
         do: unquote(block)
