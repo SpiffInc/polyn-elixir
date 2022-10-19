@@ -24,7 +24,7 @@ defmodule Polyn.EventTest do
       assert version == "#{Application.spec(:polyn, :vsn)}"
     end
 
-    test "doesn't add polyn_versio nif already there" do
+    test "doesn't add polyn_version if already there" do
       version = "#{Application.spec(:polyn, :vsn)}"
       event = Event.new(%{polyndata: %{"clientversion" => version}})
 
