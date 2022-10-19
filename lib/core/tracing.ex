@@ -105,7 +105,7 @@ defmodule Polyn.Tracing do
       rescue
         e ->
           OpenTelemetry.Tracer.record_exception(e, __STACKTRACE__)
-          raise e
+          reraise e, __STACKTRACE__
       end
     end
   end
