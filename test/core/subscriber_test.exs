@@ -107,7 +107,8 @@ defmodule Polyn.SubscriberTest do
           "element": 456
         }
       }
-      """)
+      """
+    )
 
     assert_receive({:DOWN, ^ref, :process, ^pid, {%Polyn.ValidationException{}, _stack}}, 500)
   end
@@ -153,7 +154,8 @@ defmodule Polyn.SubscriberTest do
           type: "com.test.subscriber.test.event.v1",
           data: %{name: "Iroh", element: "fire"}
         }),
-        reply_to: "foo")
+        reply_to: "foo"
+      )
 
       assert_receive(
         {:received_event, %Event{data: %{"name" => "Iroh", "element" => "fire"}},

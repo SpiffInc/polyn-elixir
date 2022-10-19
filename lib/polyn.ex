@@ -196,7 +196,7 @@ defmodule Polyn do
       data: data,
       specversion: "1.0.1",
       source: Event.full_source(Keyword.get(opts, :source)),
-      datacontenttype: "application/json",
+      datacontenttype: "application/json"
     )
   end
 

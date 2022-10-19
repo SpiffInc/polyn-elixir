@@ -140,9 +140,10 @@ defmodule Polyn.PullConsumerTest do
       @conn_name,
       "pull.consumer.test.event.v1",
       %{
-          "name" => "Toph",
-          "element" => "earth"
-      }, store_name: @store_name
+        "name" => "Toph",
+        "element" => "earth"
+      },
+      store_name: @store_name
     )
 
     start_listening_for_messages()
