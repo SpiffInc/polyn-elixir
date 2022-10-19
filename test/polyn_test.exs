@@ -2,7 +2,6 @@ defmodule PolynTest do
   use Polyn.ConnCase, async: true
   use Polyn.TracingCase
 
-  alias Polyn.Event
   alias Polyn.SchemaStore
 
   @conn_name :polyn_gnat
@@ -191,15 +190,6 @@ defmodule PolynTest do
 
       assert has_traceparent_header?(req_msg.headers)
 
-      {:span, span_record(span_id: reply_span_id)} =
-        assert_receive(
-          {:span,
-           span_record(
-             name: "(temporary) send",
-             kind: "PRODUCER"
-           )}
-        )
-
       req_attrs = span_attributes("request.test.request.v1", data["id"], req_msg.body)
 
       assert_receive(
@@ -210,6 +200,15 @@ defmodule PolynTest do
            attributes: ^req_attrs
          )}
       )
+
+      {:span, span_record(span_id: reply_span_id)} =
+        assert_receive(
+          {:span,
+           span_record(
+             name: "(temporary) send",
+             kind: "PRODUCER"
+           )}
+        )
 
       resp_attrs =
         span_attributes("(temporary)", resp_event.id, Jason.encode!(Map.from_struct(resp_event)))
