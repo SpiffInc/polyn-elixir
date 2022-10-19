@@ -58,7 +58,7 @@ defmodule Polyn.MixProject do
       {:uuid, "~> 1.1"},
       {:mox, "~> 1.0", only: :test},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
-      {:jetstream, "~> 0.0.4"},
+      {:jetstream, "~> 0.0.5"},
       {:ex_doc, "~> 0.28", only: :dev, runtime: false}
     ]
   end
