@@ -110,7 +110,7 @@ defmodule Polyn.Subscriber do
 
   @impl true
   def handle_info({:msg, %{body: body} = msg}, internal_state) do
-    Polyn.Tracing.subscribe_span msg.topic, msg do
+    Polyn.Tracing.subscribe_span msg.topic, msg[:headers] do
       event =
         JSON.deserialize!(
           body,

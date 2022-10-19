@@ -192,7 +192,7 @@ defmodule Polyn.PullConsumer do
 
   @impl Jetstream.PullConsumer
   def handle_message(message, %{module: module, state: state} = internal_state) do
-    Polyn.Tracing.subscribe_span internal_state.type, message do
+    Polyn.Tracing.subscribe_span internal_state.type, message[:headers] do
       case JSON.deserialize(message.body, store_name: internal_state.store_name) do
         {:ok, event} ->
           Polyn.Tracing.span_attributes(

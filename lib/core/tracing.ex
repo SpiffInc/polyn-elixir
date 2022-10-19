@@ -27,14 +27,14 @@ defmodule Polyn.Tracing do
   @doc """
   Start a span for handling a received message for an event
   """
-  defmacro subscribe_span(type, message, do: block) do
+  defmacro subscribe_span(type, headers, do: block) do
     block = record_exceptions(block)
 
     quote do
       # Extract a `traceparent` header from a message so it can connect the current span to a remote span
       # https://www.w3.org/TR/trace-context/#traceparent-header
-      if unquote(message)[:headers] do
-        :otel_propagator_text_map.extract(unquote(message)[:headers])
+      if unquote(headers) do
+        :otel_propagator_text_map.extract(unquote(headers))
       end
 
       OpenTelemetry.Tracer.with_span("#{unquote(type)} receive", %{kind: "CONSUMER"},

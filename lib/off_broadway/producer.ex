@@ -133,7 +133,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
     defp message_to_event(store_name, type, %Message{data: data} = message) do
       process_span_context = Polyn.Tracing.current_context()
 
-      Polyn.Tracing.subscribe_span type, data do
+      Polyn.Tracing.subscribe_span type, message.metadata[:headers] do
         Polyn.Tracing.link_to_context(process_span_context)
 
         case JSON.deserialize(data, store_name: store_name) do
