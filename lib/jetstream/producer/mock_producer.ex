@@ -19,11 +19,21 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
           Keyword.fetch!(opts, :consumer_name)
         )
 
+      connection_options =
+        Keyword.take(opts, [:connection_name, :stream_name, :consumer_name]) |> Enum.into(%{})
+
       subscribe_to_subjects(subjects)
 
       messages = fetch_all_messages(subjects)
 
-      {:producer, %{demand: 0, subjects: subjects, messages: messages, ack_ref: nil}}
+      {:producer,
+       %{
+         demand: 0,
+         subjects: subjects,
+         messages: messages,
+         ack_ref: nil,
+         connection_options: connection_options
+       }}
     end
 
     @impl GenStage

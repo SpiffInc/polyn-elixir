@@ -122,7 +122,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
     defp process_messages(messages, state, rest) do
       Polyn.Tracing.processing_span state.type do
         store_name = state.store_name
-        messages = Enum.map(messages, &message_to_event(store_name, state.type, &1))
+        messages = Enum.map(messages, &message_to_event(store_name, state, &1))
 
         handle_invalid_messages!(messages, state)
 
@@ -130,7 +130,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
       end
     end
 
-    defp message_to_event(store_name, type, %Message{data: data} = message) do
+    defp message_to_event(store_name, %{type: type} = state, %Message{data: data} = message) do
       process_span_context = Polyn.Tracing.current_context()
 
       Polyn.Tracing.subscribe_span type, message.metadata[:headers] do
@@ -138,6 +138,13 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
 
         case JSON.deserialize(data, store_name: store_name) do
           {:ok, event} ->
+            Polyn.Tracing.span_attributes(
+              conn: state.connection_options.connection_name,
+              type: type,
+              event: event,
+              payload: data
+            )
+
             Message.update_data(message, fn _data -> event end)
 
           {:error, error} ->
