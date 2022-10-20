@@ -5,6 +5,8 @@ defmodule Polyn do
   based services.
   """
 
+  use Polyn.Tracing
+
   alias Polyn.Event
   alias Polyn.Serializers.JSON
 
@@ -13,13 +15,10 @@ defmodule Polyn do
 
   * `:source` - The `source` of the event. By default will be the `domain` combined with the
   `source_root`
-  * `:triggered_by` - The event that triggered this one. Will use information from the event to build
-  up the `polyntrace` data
   """
   @type polyn_options ::
           {:store_name, binary()}
           | {:source, binary()}
-          | {:triggered_by, Event.t()}
 
   @typedoc """
   Options for publishing events. See `Gnat.pub/4` for more info
@@ -51,8 +50,6 @@ defmodule Polyn do
 
   * `:source` - The `source` of the event. By default will be the `domain` combined with the
   `source_root`
-  * `:triggered_by` - The event that triggered this one. Will use information from the event to build
-  up the `polyntrace` data
   * See `Gnat.pub/4` for other options
 
   ## Examples
@@ -65,11 +62,19 @@ defmodule Polyn do
   @spec pub(conn :: Gnat.t(), event_type :: binary(), data :: any(), opts :: list(pub_options())) ::
           :ok
   def pub(conn, event_type, data, opts \\ []) do
-    event = build_event(event_type, data, opts)
+    Polyn.Tracing.publish_span event_type do
+      event = build_event(event_type, data, opts)
 
-    opts = add_nats_msg_id_header(opts, event)
+      json = JSON.serialize!(event, opts)
 
-    nats().pub(conn, event_type, JSON.serialize!(event, opts), remove_polyn_opts(opts))
+      Polyn.Tracing.span_attributes(conn: conn, type: event_type, event: event, payload: json)
+
+      opts =
+        add_nats_msg_id_header(opts, event)
+        |> inject_trace_header()
+
+      nats().pub(conn, event_type, json, remove_polyn_opts(opts))
+    end
   end
 
   @doc """
@@ -80,8 +85,6 @@ defmodule Polyn do
 
   * `:source` - The `source` of the event. By default will be the `domain` combined with the
   `source_root`
-  * `:triggered_by` - The event that triggered this one. Will use information from the event to build
-  up the `polyntrace` data
   * See `Gnat.request/4` for other options
 
   ## Examples
@@ -98,21 +101,47 @@ defmodule Polyn do
           opts :: list(req_options())
         ) :: {:ok, Gnat.message()} | {:error, :timeout}
   def request(conn, event_type, data, opts \\ []) do
-    event = build_event(event_type, data, opts)
+    Polyn.Tracing.publish_span event_type do
+      event = build_event(event_type, data, opts)
 
-    opts = add_nats_msg_id_header(opts, event)
+      opts =
+        add_nats_msg_id_header(opts, event)
+        |> inject_trace_header()
 
-    case nats().request(
-           conn,
-           event_type,
-           JSON.serialize!(event, opts),
-           remove_polyn_opts(opts)
-         ) do
-      {:ok, message} ->
-        {:ok, Map.put(message, :body, JSON.deserialize!(message.body, opts))}
+      json = JSON.serialize!(event, opts)
 
-      error ->
-        error
+      Polyn.Tracing.span_attributes(conn: conn, type: event_type, event: event, payload: json)
+
+      case nats().request(
+             conn,
+             event_type,
+             json,
+             remove_polyn_opts(opts)
+           ) do
+        {:ok, message} ->
+          handle_reponse_success(conn, message, opts)
+
+        error ->
+          Polyn.Tracing.record_timeout_exception(event_type, json)
+          error
+      end
+    end
+  end
+
+  defp handle_reponse_success(conn, message, opts) do
+    # The :reply_to subject is a temporarily generated "inbox"
+    # https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/messaging/#span-name
+    Polyn.Tracing.subscribe_span "(temporary)", message.headers do
+      event = JSON.deserialize!(message.body, opts)
+
+      Polyn.Tracing.span_attributes(
+        conn: conn,
+        type: "(temporary)",
+        event: event,
+        payload: message.body
+      )
+
+      {:ok, Map.put(message, :body, event)}
     end
   end
 
@@ -123,8 +152,6 @@ defmodule Polyn do
 
   * `:source` - The `source` of the event. By default will be the `domain` combined with the
   `source_root`
-  * `:triggered_by` - The event that triggered this one. Will use information from the event to build
-  up the `polyntrace` data
   * See `Gnat.pub/4` for other options
 
   ## Examples
@@ -143,11 +170,24 @@ defmodule Polyn do
         ) ::
           :ok
   def reply(conn, reply_to, event_type, data, opts \\ []) do
-    event = build_event(event_type, data, opts)
+    Polyn.Tracing.publish_span "(temporary)" do
+      event = build_event(event_type, data, opts)
 
-    opts = add_nats_msg_id_header(opts, event)
+      json = JSON.serialize!(event, opts)
 
-    nats().pub(conn, reply_to, JSON.serialize!(event, opts), remove_polyn_opts(opts))
+      Polyn.Tracing.span_attributes(
+        conn: conn,
+        type: "(temporary)",
+        event: event,
+        payload: json
+      )
+
+      opts =
+        add_nats_msg_id_header(opts, event)
+        |> inject_trace_header()
+
+      nats().pub(conn, reply_to, json, remove_polyn_opts(opts))
+    end
   end
 
   defp build_event(event_type, data, opts) do
@@ -156,25 +196,12 @@ defmodule Polyn do
       data: data,
       specversion: "1.0.1",
       source: Event.full_source(Keyword.get(opts, :source)),
-      datacontenttype: "application/json",
-      polyntrace: build_polyntrace(Keyword.get(opts, :triggered_by))
+      datacontenttype: "application/json"
     )
   end
 
-  defp build_polyntrace(nil), do: []
-
-  defp build_polyntrace(%Event{} = triggered_by) do
-    Enum.concat(triggered_by.polyntrace, [
-      %{
-        id: triggered_by.id,
-        type: triggered_by.type,
-        time: triggered_by.time
-      }
-    ])
-  end
-
   defp remove_polyn_opts(opts) do
-    Keyword.drop(opts, [:source, :triggered_by, :store_name])
+    Keyword.drop(opts, [:source, :store_name])
   end
 
   defp add_nats_msg_id_header(opts, event) do
@@ -184,6 +211,11 @@ defmodule Polyn do
       Keyword.get(opts, :headers, [])
       |> Enum.concat([{"Nats-Msg-Id", event.id}])
 
+    Keyword.put(opts, :headers, headers)
+  end
+
+  defp inject_trace_header(opts) do
+    headers = Polyn.Tracing.add_trace_header(opts[:headers])
     Keyword.put(opts, :headers, headers)
   end
 

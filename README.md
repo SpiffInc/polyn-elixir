@@ -130,6 +130,12 @@ stream and consumer configuration information. This hybrid mocking approach is i
 
 `Polyn.Testing` associates each test process with its own NATS mock. To allow other processes that will call `Polyn` functions to use the same NATS mock as the rest of the test use the `Polyn.Sandbox.allow/2` function. If you don't have access to the `pid` or name of a process that is using `Polyn` you will need to make your file `async: false`.
 
+## Observability
+
+### Tracing
+
+Polyn uses [OpenTelemetry](https://opentelemetry.io/) to create distributed traces that will connect sent and received events in different services. Your application will need the [`opentelemetry` package](https://opentelemetry.io/docs/instrumentation/erlang/getting-started/) installed to collect the trace information.
+
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed

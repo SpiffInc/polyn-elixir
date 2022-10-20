@@ -13,20 +13,10 @@ defmodule Polyn.Event do
             datacontenttype: nil,
             source: nil,
             time: nil,
-            polyntrace: [],
             polyndata: %{
               clientlang: "elixir",
               clientlangversion: System.build_info().version
             }
-
-  @typedoc """
-  Previous events that led to this one
-  """
-  @type polyntrace :: %{
-          type: binary(),
-          time: binary(),
-          id: binary()
-        }
 
   @typedoc """
   The Event structure used throughout Polyn.
@@ -39,7 +29,6 @@ defmodule Polyn.Event do
   * `datacontenttype` - Content type of the data value. Must adhere to RFC 2046 format.
   * `source` - Identifies the context in which an event happened.
   * `time` - Timestamp of when the occurrence happened. Must adhere to RFC 3339.
-  * `polyntrace` - Previous events that led to this one
   * `polyndata` - Information about the client that produced the event and additional data
   """
   @type t() :: %__MODULE__{
@@ -51,7 +40,6 @@ defmodule Polyn.Event do
           datacontenttype: String.t(),
           source: String.t(),
           time: String.t(),
-          polyntrace: list(polyntrace()),
           polyndata: map()
         }
 
@@ -86,6 +74,11 @@ defmodule Polyn.Event do
   """
   def new_timestamp do
     DateTime.to_iso8601(DateTime.utc_now())
+  end
+
+  # we don't need to add both the atom and string versions
+  defp add_polyn_version(%__MODULE__{polyndata: %{"clientversion" => _version}} = event) do
+    event
   end
 
   defp add_polyn_version(%__MODULE__{} = event) do

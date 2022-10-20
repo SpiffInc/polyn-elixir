@@ -23,6 +23,14 @@ defmodule Polyn.EventTest do
       assert %Event{polyndata: %{clientversion: version}} = Event.new([])
       assert version == "#{Application.spec(:polyn, :vsn)}"
     end
+
+    test "doesn't add polyn_version if already there" do
+      version = "#{Application.spec(:polyn, :vsn)}"
+      event = Event.new(%{polyndata: %{"clientversion" => version}})
+
+      assert event.polyndata["clientversion"] == version
+      assert event.polyndata[:clientversion] == nil
+    end
   end
 
   describe "full_type/1" do

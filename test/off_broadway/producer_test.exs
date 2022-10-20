@@ -1,6 +1,7 @@
 defmodule OffBroadway.Polyn.ProducerTest do
   # false for global sandbox
   use Polyn.ConnCase, async: false
+  use Polyn.TracingCase
 
   alias Broadway.Message
   alias Jetstream.API.{Consumer, Stream}
@@ -88,33 +89,43 @@ defmodule OffBroadway.Polyn.ProducerTest do
 
   describe "nats integration" do
     test "valid messages are converted to Event structs" do
-      Gnat.pub(@conn_name, "company.created.v1", """
-      {
-        "id": "#{UUID.uuid4()}",
-        "source": "com.test.foo",
-        "type": "com.test.company.created.v1",
-        "specversion": "1.0.1",
-        "type": "com.test.company.created.v1",
-        "data": {
-          "name": "Toph",
-          "element": "earth"
+      Gnat.pub(
+        @conn_name,
+        "company.created.v1",
+        """
+        {
+          "id": "#{UUID.uuid4()}",
+          "source": "com.test.foo",
+          "type": "com.test.company.created.v1",
+          "specversion": "1.0.1",
+          "type": "com.test.company.created.v1",
+          "data": {
+            "name": "Toph",
+            "element": "earth"
+          }
         }
-      }
-      """)
+        """,
+        headers: []
+      )
 
-      Gnat.pub(@conn_name, "company.created.v1", """
-      {
-        "id": "#{UUID.uuid4()}",
-        "source": "com.test.foo",
-        "type": "com.test.company.created.v1",
-        "specversion": "1.0.1",
-        "type": "com.test.company.created.v1",
-        "data": {
-          "name": "Katara",
-          "element": "water"
+      Gnat.pub(
+        @conn_name,
+        "company.created.v1",
+        """
+        {
+          "id": "#{UUID.uuid4()}",
+          "source": "com.test.foo",
+          "type": "com.test.company.created.v1",
+          "specversion": "1.0.1",
+          "type": "com.test.company.created.v1",
+          "data": {
+            "name": "Katara",
+            "element": "water"
+          }
         }
-      }
-      """)
+        """,
+        headers: []
+      )
 
       start_pipeline()
 
@@ -236,6 +247,70 @@ defmodule OffBroadway.Polyn.ProducerTest do
 
       assert_receive({:msg, %{body: "+TERM"}})
       assert_receive({:msg, %{body: "-NAK"}})
+    end
+
+    test "tracing" do
+      start_collecting_spans()
+
+      Polyn.pub(
+        @conn_name,
+        "company.created.v1",
+        %{
+          "name" => "Katara",
+          "element" => "water"
+        },
+        store_name: @store_name
+      )
+
+      start_pipeline()
+
+      {:received_event, msg} =
+        assert_receive(
+          {:received_event,
+           %Message{
+             data: %Event{
+               type: "com.test.company.created.v1",
+               data: %{
+                 "name" => "Katara",
+                 "element" => "water"
+               }
+             }
+           }}
+        )
+
+      {:span, span_record(span_id: send_span_id)} =
+        assert_receive(
+          {:span,
+           span_record(
+             name: "company.created.v1 send",
+             kind: "PRODUCER"
+           )}
+        )
+
+      assert_receive(
+        {:span,
+         span_record(
+           name: "company.created.v1 process",
+           kind: "CONSUMER"
+         )}
+      )
+
+      span_attrs =
+        span_attributes(
+          "company.created.v1",
+          msg.data.id,
+          Jason.encode!(Map.from_struct(msg.data))
+        )
+
+      assert_receive(
+        {:span,
+         span_record(
+           name: "company.created.v1 receive",
+           kind: "CONSUMER",
+           attributes: ^span_attrs,
+           parent_span_id: ^send_span_id
+         )}
+      )
     end
   end
 
