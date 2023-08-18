@@ -1,3 +1,4 @@
+# THIS REPO IS NO LONGER IN USE SO DON'T USE IT!
 # Polyn
 
 Polyn is a dead simple service framework designed to be language agnostic while
